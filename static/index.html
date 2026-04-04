@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SalesCast AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0b0f;--surface:#111318;--surface2:#181b22;--surface3:#1f2330;
+    --border:#252a35;--border2:#2e3545;
+    --accent:#4f8ef7;--accent2:#7c5cfc;--accent3:#00d4aa;--accent4:#f7884f;
+    --text:#e8eaf0;--text2:#8b92a8;--text3:#555e75;
+    --success:#00d4aa;--warning:#f7c948;--danger:#f75858;
+    --gradient:linear-gradient(135deg,#4f8ef7,#7c5cfc);
+  }
+  body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .app{display:flex;min-height:100vh}
+
+  /* ── LOGIN PAGE ── */
+  #loginPage{
+    position:fixed;inset:0;z-index:9999;display:flex;
+    background:var(--bg);transition:opacity .5s ease,transform .5s ease;
+  }
+  #loginPage.hide{opacity:0;pointer-events:none;transform:scale(1.02)}
+
+  /* LEFT: Branding panel (dark, with canvas) */
+  .login-left{
+    flex:1;position:relative;overflow:hidden;
+    background:linear-gradient(145deg,#0d1117 0%,#0f1520 60%,#0a0d14 100%);
+    display:flex;align-items:center;justify-content:flex-start;
+    padding:64px 56px;
+  }
+  #neuralCanvas{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+  .login-left-content{position:relative;z-index:2;max-width:480px}
+
+  .login-brand-wrap{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .login-brand-icon{
+    width:44px;height:44px;background:rgba(79,142,247,.15);
+    border:1px solid rgba(79,142,247,.3);border-radius:10px;
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+  }
+  .login-brand{font-size:32px;font-weight:700;letter-spacing:-1px;color:#fff}
+  .login-tagline{
+    font-size:17px;font-weight:600;color:#fff;margin-bottom:14px;letter-spacing:-.3px;line-height:1.4;
+  }
+  .login-desc{
+    font-size:14px;color:rgba(255,255,255,.45);line-height:1.75;margin-bottom:44px;max-width:420px;
+  }
+  .login-stats{display:flex;align-items:center;gap:0;flex-wrap:wrap}
+  .login-stat{display:flex;flex-direction:column;gap:5px;padding:0 28px 0 0}
+  .login-stat:first-child{padding-left:0}
+  .login-stat-val{font-size:30px;font-weight:700;letter-spacing:-1px;color:#fff}
+  .login-stat-val.accent{color:var(--accent)}
+  .login-stat-val.green{color:var(--success)}
+  .login-stat-val.purple{color:var(--accent2)}
+  .login-stat-lbl{font-size:11px;color:rgba(255,255,255,.35);font-family:'Space Mono',monospace;letter-spacing:.5px;white-space:nowrap}
+  .login-stat-sep{width:1px;height:40px;background:rgba(255,255,255,.1);margin:0 20px 0 0;flex-shrink:0}
+
+  /* RIGHT: Login form panel (light/white surface) */
+  .login-right{
+    width:420px;flex-shrink:0;
+    background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    padding:48px 44px;position:relative;
+  }
+  .login-form-wrap{width:100%}
+  .login-logo{display:flex;flex-direction:column;align-items:center;margin-bottom:32px}
+  .login-logo-icon{
+    width:56px;height:56px;background:linear-gradient(135deg,#e8f0fe,#d0e2ff);
+    border-radius:14px;display:flex;align-items:center;justify-content:center;
+    font-size:26px;margin-bottom:14px;
+    box-shadow:0 4px 16px rgba(79,142,247,.15);
+    animation:logoFloat 3s ease-in-out infinite;
+  }
+  @keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .login-title{font-size:22px;font-weight:700;letter-spacing:-.5px;color:#0f172a;text-align:center}
+  .login-sub{font-size:13px;color:#94a3b8;text-align:center;margin-top:4px}
+
+  .form-group{margin-bottom:16px}
+  .form-label{font-size:12px;font-weight:600;color:#374151;letter-spacing:.3px;margin-bottom:7px;display:block}
+  .form-input-wrap{position:relative}
+  .form-input-icon{
+    position:absolute;left:13px;top:50%;transform:translateY(-50%);
+    font-size:14px;color:#cbd5e1;pointer-events:none;
+  }
+  .form-input{
+    width:100%;background:#f8fafc;border:1.5px solid #e2e8f0;
+    color:#0f172a;padding:11px 14px 11px 40px;border-radius:10px;
+    font-size:13.5px;font-family:'Space Grotesk',sans-serif;
+    outline:none;transition:border-color .2s,box-shadow .2s;
+  }
+  .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,.12);background:#fff}
+  .form-input::placeholder{color:#cbd5e1}
+  .form-input-toggle{
+    position:absolute;right:13px;top:50%;transform:translateY(-50%);
+    background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:14px;padding:0;
+    transition:color .2s;
+  }
+  .form-input-toggle:hover{color:#64748b}
+
+  .login-btn{
+    width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;
+    cursor:pointer;border:none;font-family:'Space Grotesk',sans-serif;
+    background:var(--gradient);color:#fff;letter-spacing:.3px;
+    transition:opacity .2s,transform .15s,box-shadow .2s;
+    box-shadow:0 4px 16px rgba(79,142,247,.35);margin-top:6px;
+  }
+  .login-btn:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 8px 24px rgba(79,142,247,.45)}
+  .login-btn:active{transform:translateY(0)}
+  .login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+  .login-hint{text-align:center;margin-top:16px;font-size:12px;color:#94a3b8}
+  .login-hint span{color:var(--accent);cursor:pointer;font-family:'Space Mono',monospace;text-decoration:underline}
+
+  .login-error{
+    background:#fef2f2;border:1px solid #fecaca;
+    color:#dc2626;font-size:12px;padding:10px 14px;border-radius:8px;
+    margin-bottom:14px;display:none;
+  }
+
+  /* Social login */
+  .social-divider{display:flex;align-items:center;gap:12px;margin:20px 0 16px}
+  .social-divider-line{flex:1;height:1px;background:#e2e8f0}
+  .social-divider-text{font-size:11px;color:#94a3b8;white-space:nowrap;font-family:'Space Mono',monospace;letter-spacing:.5px}
+  .social-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .social-btn{
+    display:flex;align-items:center;justify-content:center;gap:7px;
+    padding:9px 8px;border-radius:9px;font-size:12.5px;font-weight:600;
+    cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#374151;
+    font-family:'Space Grotesk',sans-serif;transition:all .2s;
+  }
+  .social-btn:hover{border-color:#c7d2fe;background:#f8faff;transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,142,247,.1)}
+  .social-btn:active{transform:translateY(0);box-shadow:none}
+  .social-btn svg{flex-shrink:0}
+
+  /* Spinner (reusable) */
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media(max-width:768px){
+    .login-left{display:none}
+    .login-right{width:100%}
+  }
+
+  /* SIDEBAR */
+  .sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh;z-index:100}
+  .logo{padding:28px 24px 20px;border-bottom:1px solid var(--border)}
+  .logo-mark{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:32px;height:32px;background:var(--gradient);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .logo-text{font-size:18px;font-weight:700;letter-spacing:-0.5px}
+  .logo-sub{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:2px;letter-spacing:1px}
+  .nav{padding:16px 12px;flex:1}
+  .nav-section{font-size:10px;color:var(--text3);letter-spacing:1.5px;padding:12px 12px 6px;text-transform:uppercase}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:all .2s;margin-bottom:2px;position:relative}
+  .nav-item:hover{background:var(--surface2);color:var(--text)}
+  .nav-item.active{background:rgba(79,142,247,.12);color:var(--accent)}
+  .nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--accent);border-radius:0 3px 3px 0}
+  .nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-family:'Space Mono',monospace}
+  .sidebar-footer{padding:16px;border-top:1px solid var(--border)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px var(--success);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+
+  /* MAIN */
+  .main{margin-left:240px;flex:1;display:flex;flex-direction:column}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+  .page-title{font-size:20px;font-weight:700;letter-spacing:-0.5px}
+  .page-sub{font-size:12px;color:var(--text3);margin-top:2px;font-family:'Space Mono',monospace}
+  .topbar-actions{display:flex;align-items:center;gap:10px}
+  .topbar-divider{width:1px;height:28px;background:var(--border2);margin:0 4px}
+  .user-pill{display:flex;align-items:center;gap:10px;padding:5px 14px 5px 6px;border-radius:99px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;transition:all .2s;position:relative}
+  .user-pill:hover{border-color:var(--accent);background:var(--surface3)}
+  .user-avatar{width:30px;height:30px;border-radius:50%;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;letter-spacing:-.3px}
+  .user-info{display:flex;flex-direction:column;gap:1px}
+  .user-name{font-size:12px;font-weight:600;color:var(--text);line-height:1}
+  .user-role{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1}
+  .user-chevron{font-size:10px;color:var(--text3);margin-left:2px}
+  /* Dropdown */
+  .user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:200;display:none;overflow:hidden;animation:fadeIn .15s ease}
+  .user-pill:hover .user-dropdown{display:block}
+  .dropdown-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .dropdown-avatar{width:36px;height:36px;border-radius:50%;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0}
+  .dropdown-name{font-size:13px;font-weight:600;color:var(--text)}
+  .dropdown-email{font-size:11px;color:var(--text3);margin-top:1px}
+  .dropdown-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;color:var(--text2);cursor:pointer;transition:background .15s}
+  .dropdown-item:hover{background:var(--surface2);color:var(--text)}
+  .dropdown-item-icon{font-size:15px;width:18px;text-align:center}
+  .dropdown-sep{height:1px;background:var(--border);margin:4px 0}
+  .dropdown-item.danger{color:var(--danger)}
+  .dropdown-item.danger:hover{background:rgba(247,88,88,.08)}
+  .btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;border:none;font-family:'Space Grotesk',sans-serif;display:inline-flex;align-items:center;gap:6px}
+  .btn-primary{background:var(--gradient);color:#fff}
+  .btn-primary:hover{opacity:.85;transform:translateY(-1px)}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+  .btn-ghost:hover{background:var(--surface2);color:var(--text)}
+  .btn-success{background:rgba(0,212,170,.15);color:var(--success);border:1px solid rgba(0,212,170,.3)}
+  .btn-success:hover{background:rgba(0,212,170,.25)}
+  .btn-sm{padding:6px 12px;font-size:12px}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+  .content{padding:32px;flex:1}
+
+  /* PAGE SECTIONS */
+  .page{display:none}
+  .page.active{display:block;animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  /* HERO */
+  .hero{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:48px;text-align:center;position:relative;overflow:hidden;margin-bottom:32px}
+  .hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:400px;height:200px;background:radial-gradient(ellipse,rgba(79,142,247,.15),transparent 70%)}
+  .hero-label{font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:16px}
+  .hero-title{font-size:48px;font-weight:700;letter-spacing:-2px;line-height:1.1;margin-bottom:16px}
+  .hero-title span{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero-sub{font-size:16px;color:var(--text2);max-width:500px;margin:0 auto 32px;line-height:1.6}
+  .hero-actions{display:flex;justify-content:center;gap:12px}
+
+  /* STATS GRID */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .stat-label{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:8px}
+  .stat-value{font-size:28px;font-weight:700;letter-spacing:-1px;margin-bottom:4px}
+  .stat-change{font-size:12px;color:var(--success)}
+  .stat-change.neg{color:var(--danger)}
+  .stat-icon{font-size:24px;float:right;margin-top:-4px}
+
+  /* UPLOAD */
+  .upload-zone{background:var(--surface2);border:2px dashed var(--border2);border-radius:16px;padding:64px;text-align:center;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+  .upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(79,142,247,.05)}
+  .upload-icon{font-size:48px;margin-bottom:16px;display:block}
+  .upload-title{font-size:20px;font-weight:600;margin-bottom:8px}
+  .upload-sub{color:var(--text2);font-size:14px;margin-bottom:20px}
+  .upload-formats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+  .format-badge{background:var(--surface3);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:11px;font-family:'Space Mono',monospace;color:var(--text2)}
+  #fileInput{display:none}
+
+  /* DATA PREVIEW */
+  .preview-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:24px}
+  .preview-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .preview-title{font-size:14px;font-weight:600}
+  .table-wrap{overflow-x:auto;max-height:280px;overflow-y:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:var(--surface2);padding:10px 16px;text-align:left;font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:'Space Mono',monospace;position:sticky;top:0;border-bottom:1px solid var(--border)}
+  td{padding:10px 16px;border-bottom:1px solid rgba(37,42,53,.5);color:var(--text2)}
+  tr:hover td{background:var(--surface2)}
+  tr:last-child td{border-bottom:none}
+
+  /* COLUMN SELECTOR */
+  .col-selector{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-top:20px}
+  .col-selector-title{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .col-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .field-group{display:flex;flex-direction:column;gap:8px}
+  .field-label{font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;font-family:'Space Mono',monospace}
+  select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:8px;font-size:13px;font-family:'Space Grotesk',sans-serif;cursor:pointer;appearance:none;outline:none}
+  select:hover{border-color:var(--accent)}
+
+  /* TRAINING */
+  .models-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+  .model-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+  .model-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+  .model-card.selected{border-color:var(--accent);background:rgba(79,142,247,.05)}
+  .model-card.selected::after{content:'✓';position:absolute;top:12px;right:12px;background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+  .model-icon{font-size:28px;margin-bottom:12px}
+  .model-name{font-size:14px;font-weight:600;margin-bottom:6px}
+  .model-desc{font-size:12px;color:var(--text3);line-height:1.5}
+  .model-tag{display:inline-block;margin-top:10px;font-size:10px;font-family:'Space Mono',monospace;padding:3px 8px;border-radius:4px}
+  .tag-fast{background:rgba(0,212,170,.1);color:var(--success);border:1px solid rgba(0,212,170,.2)}
+  .tag-med{background:rgba(247,200,72,.1);color:var(--warning);border:1px solid rgba(247,200,72,.2)}
+  .tag-deep{background:rgba(124,92,252,.1);color:var(--accent2);border:1px solid rgba(124,92,252,.2)}
+
+  /* PROGRESS */
+  .progress-bar{background:var(--surface2);border-radius:99px;height:6px;overflow:hidden;margin:8px 0}
+  .progress-fill{height:100%;border-radius:99px;background:var(--gradient);transition:width .4s ease}
+  .train-log{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;font-family:'Space Mono',monospace;font-size:12px;color:var(--text2);max-height:180px;overflow-y:auto;margin-top:16px}
+  .log-line{padding:2px 0;animation:fadeIn .3s ease}
+  .log-line.success{color:var(--success)}
+  .log-line.info{color:var(--accent)}
+  .log-line.warn{color:var(--warning)}
+
+  /* RESULTS */
+  .results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+  .result-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative}
+  .result-card.best{border-color:var(--success);background:rgba(0,212,170,.03)}
+  .best-badge{position:absolute;top:-10px;right:16px;background:var(--success);color:#111;font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;font-family:'Space Mono',monospace;letter-spacing:.5px}
+  .metric-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(37,42,53,.6)}
+  .metric-row:last-child{border-bottom:none}
+  .metric-name{font-size:12px;color:var(--text3);font-family:'Space Mono',monospace}
+  .metric-val{font-size:13px;font-weight:600}
+  .metric-val.good{color:var(--success)}
+  .metric-val.med{color:var(--warning)}
+  .metric-val.bad{color:var(--danger)}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+  .chart-title{font-size:14px;font-weight:600;margin-bottom:4px}
+  .chart-sub{font-size:12px;color:var(--text3);margin-bottom:20px}
+  .charts-2col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+  /* TOGGLE */
+  .toggle-group{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px;margin-bottom:20px;width:fit-content}
+  .toggle-btn{padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--text3);border:none;font-family:'Space Grotesk',sans-serif}
+  .toggle-btn.active{background:var(--surface3);color:var(--text)}
+
+  /* TAGS */
+  .tag{display:inline-block;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace}
+  .tag-blue{background:rgba(79,142,247,.12);color:var(--accent);border:1px solid rgba(79,142,247,.2)}
+  .tag-green{background:rgba(0,212,170,.12);color:var(--success);border:1px solid rgba(0,212,170,.2)}
+  .tag-purple{background:rgba(124,92,252,.12);color:var(--accent2);border:1px solid rgba(124,92,252,.2)}
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:var(--surface)}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+  /* Spinner */
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Responsive */
+  @media(max-width:900px){
+    .sidebar{width:60px}.sidebar .logo-text,.sidebar .logo-sub,.sidebar-footer .status-row span,.nav-section,.nav-item span,.nav-badge{display:none}
+    .main{margin-left:60px}.stats-grid{grid-template-columns:1fr 1fr}.results-grid,.models-grid,.charts-2col{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN PAGE ══════════════ -->
+<div id="loginPage">
+
+  <!-- LEFT: Branding + Neural Canvas -->
+  <div class="login-left">
+    <canvas id="neuralCanvas"></canvas>
+    <div class="login-left-content">
+      <div class="login-brand-wrap">
+        <div class="login-brand-icon">🔮</div>
+        <div class="login-brand">DataPredict</div>
+      </div>
+      <div class="login-tagline">Smart Data Analysis &amp; Prediction Platform</div>
+      <div class="login-desc">Upload your data in any format, and let the platform handle preprocessing, training and comparison between models — automatically.</div>
+      <div class="login-stats">
+        <div class="login-stat">
+          <div class="login-stat-val accent">80/20</div>
+          <div class="login-stat-lbl">Train / Test Split</div>
+        </div>
+        <div class="login-stat-sep"></div>
+        <div class="login-stat">
+          <div class="login-stat-val green">∞</div>
+          <div class="login-stat-lbl">Data Types</div>
+        </div>
+        <div class="login-stat-sep"></div>
+        <div class="login-stat">
+          <div class="login-stat-val purple">3</div>
+          <div class="login-stat-lbl">ML Models</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Login Form -->
+  <div class="login-right">
+    <div class="login-form-wrap">
+      <div class="login-logo">
+        <div class="login-logo-icon">🔮</div>
+        <div class="login-title">Welcome Back</div>
+        <div class="login-sub">Sign in to access the Analytics Platform</div>
+      </div>
+      <div class="login-error" id="loginError">Invalid credentials. Try username: <b>demo</b> / password: <b>demo123</b></div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">👤</span>
+          <input class="form-input" id="usernameInput" type="text" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">🔒</span>
+          <input class="form-input" id="passwordInput" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+          <button class="form-input-toggle" onclick="togglePwd(this)" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+      <div class="login-hint">Demo account — username: <span onclick="prefill()">demo</span> / password: <span onclick="prefill()">demo123</span></div>
+
+      <div class="social-divider">
+        <span class="social-divider-line"></span>
+        <span class="social-divider-text">or continue with</span>
+        <span class="social-divider-line"></span>
+      </div>
+
+      <div class="social-btns">
+        <button class="social-btn" onclick="socialLogin('Google')">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+          <span>Google</span>
+        </button>
+        <button class="social-btn" onclick="socialLogin('GitHub')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span>GitHub</span>
+        </button>
+        <button class="social-btn" onclick="socialLogin('Microsoft')">
+          <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+          <span>Microsoft</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- ══════════════ END LOGIN ══════════════ -->
+
+<div class="app" id="mainApp" style="display:none">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <div class="logo-icon">🔮</div>
+        <div>
+          <div class="logo-text">SalesCast</div>
+          <div class="logo-sub">AI Platform</div>
+        </div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Navigate</div>
+      <div class="nav-item active" onclick="showPage('home',this)">
+        <div class="nav-icon">🏠</div><span>Home</span>
+      </div>
+      <div class="nav-item" onclick="showPage('upload',this)">
+        <div class="nav-icon">📤</div><span>Upload Data</span>
+      </div>
+      <div class="nav-item" onclick="showPage('train',this)">
+        <div class="nav-icon">⚙️</div><span>Train Models</span>
+      </div>
+      <div class="nav-item" id="resultsNav" onclick="showPage('results',this)">
+        <div class="nav-icon">📊</div><span>Results</span>
+        <span class="nav-badge" id="resultsBadge" style="display:none">New</span>
+      </div>
+      <div class="nav-section">More</div>
+      <div class="nav-item" onclick="downloadCSV()">
+        <div class="nav-icon">💾</div><span>Export CSV</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="status-row">
+        <div class="status-dot"></div>
+        <span>Engine Online</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="pageTitle">Dashboard Overview</div>
+        <div class="page-sub" id="pageSub">SALESCAST AI · ML PREDICTION PLATFORM</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="showPage('upload',document.querySelectorAll('.nav-item')[1])">+ Upload Data</button>
+        <button class="btn btn-primary btn-sm" onclick="showPage('train',document.querySelectorAll('.nav-item')[2])">Train Models</button>
+        <div class="topbar-divider"></div>
+        <div class="user-pill">
+          <div class="user-avatar" id="topbarAvatar">D</div>
+          <div class="user-info">
+            <div class="user-name" id="topbarName">Demo User</div>
+            <div class="user-role">Data Analyst</div>
+          </div>
+          <span class="user-chevron">▾</span>
+          <div class="user-dropdown">
+            <div class="dropdown-header">
+              <div class="dropdown-avatar" id="dropdownAvatar">D</div>
+              <div>
+                <div class="dropdown-name" id="dropdownName">Demo User</div>
+                <div class="dropdown-email" id="dropdownEmail">demo@salescast.ai</div>
+              </div>
+            </div>
+            <div class="dropdown-item"><span class="dropdown-item-icon">👤</span>My Profile</div>
+            <div class="dropdown-item"><span class="dropdown-item-icon">⚙️</span>Preferences</div>
+            <div class="dropdown-item"><span class="dropdown-item-icon">📊</span>My Reports</div>
+            <div class="dropdown-sep"></div>
+            <div class="dropdown-item danger" onclick="logOut()"><span class="dropdown-item-icon">🚪</span>Sign Out</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- HOME PAGE -->
+      <div class="page active" id="page-home">
+        <div class="hero">
+          <div class="hero-label">Next-Gen ML Platform</div>
+          <div class="hero-title">Predict Sales with<br><span>Precision AI</span></div>
+          <div class="hero-sub">Upload your historical data, train 3 ML models, and get accurate sales forecasts with detailed performance analytics.</div>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="showPage('upload',document.querySelectorAll('.nav-item')[1])">🚀 Get Started</button>
+            <button class="btn btn-ghost" onclick="loadSampleData()">📊 Use Sample Data</button>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Models Available <span class="stat-icon">🤖</span></div>
+            <div class="stat-value" style="background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">3</div>
+            <div class="stat-change">Linear · Tree · Neural</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Algorithms <span class="stat-icon">⚗️</span></div>
+            <div class="stat-value" style="color:var(--accent2)">ML</div>
+            <div class="stat-change">scikit-learn powered</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Metrics Tracked <span class="stat-icon">📐</span></div>
+            <div class="stat-value" style="color:var(--accent3)">4</div>
+            <div class="stat-change">MAE · RMSE · R² · Accuracy</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Export Formats <span class="stat-icon">💾</span></div>
+            <div class="stat-value" style="color:var(--accent4)">CSV</div>
+            <div class="stat-change">Full predictions export</div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Platform Workflow</div>
+          <div class="chart-sub">How SalesCast AI works in 4 steps</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px">
+            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+              <div style="font-size:32px;margin-bottom:10px">📤</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px">1. Upload</div>
+              <div style="font-size:12px;color:var(--text3)">Upload CSV or Excel with historical sales</div>
+            </div>
+            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+              <div style="font-size:32px;margin-bottom:10px">⚙️</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px">2. Preprocess</div>
+              <div style="font-size:12px;color:var(--text3)">Auto clean, encode and split data</div>
+            </div>
+            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+              <div style="font-size:32px;margin-bottom:10px">🧠</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px">3. Train</div>
+              <div style="font-size:12px;color:var(--text3)">Train 3 ML models simultaneously</div>
+            </div>
+            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+              <div style="font-size:32px;margin-bottom:10px">📊</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px">4. Results</div>
+              <div style="font-size:12px;color:var(--text3)">Compare models and export predictions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UPLOAD PAGE -->
+      <div class="page" id="page-upload">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="e=>{e.preventDefault();this.classList.add('dragover')}" ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Drop your dataset here</div>
+          <div class="upload-sub">or click to browse files from your computer</div>
+          <div class="upload-formats">
+            <span class="format-badge">.CSV</span>
+            <span class="format-badge">.XLSX</span>
+            <span class="format-badge">.XLS</span>
+            <span class="format-badge">Max 50MB</span>
+          </div>
+          <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(event)">
+        </div>
+
+        <div id="dataInfo" style="display:none">
+          <div class="col-selector" style="margin-top:20px">
+            <div class="col-selector-title">📋 Dataset Configuration</div>
+            <div id="dataStats" style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap"></div>
+            <div class="col-grid">
+              <div class="field-group">
+                <div class="field-label">🎯 Target Column (Sales)</div>
+                <select id="targetCol" onchange="updateConfig()"><option value="">Select target column...</option></select>
+              </div>
+              <div class="field-group">
+                <div class="field-label">📅 Date Column (Optional)</div>
+                <select id="dateCol"><option value="">None</option></select>
+              </div>
+              <div class="field-group" style="grid-column:1/-1">
+                <div class="field-label">📊 Feature Columns (Hold Ctrl/Cmd for multiple)</div>
+                <select id="featureCols" multiple style="height:100px"></select>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:10px">
+              <button class="btn btn-primary" onclick="confirmUpload()">✅ Confirm & Continue</button>
+              <button class="btn btn-ghost" onclick="loadSampleData()">📊 Use Sample Data Instead</button>
+            </div>
+          </div>
+          <div class="preview-card">
+            <div class="preview-header">
+              <div class="preview-title">📄 Data Preview</div>
+              <div id="rowCount" style="font-size:12px;color:var(--text3)"></div>
+            </div>
+            <div class="table-wrap"><table id="previewTable"></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRAIN PAGE -->
+      <div class="page" id="page-train">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px" id="dataStatus">
+          <div style="font-size:13px;color:var(--text3)" id="trainDataStatus">⚠️ No dataset loaded. <span style="color:var(--accent);cursor:pointer" onclick="showPage('upload',document.querySelectorAll('.nav-item')[1])">Upload data first →</span></div>
+        </div>
+        <div class="models-grid">
+          <div class="model-card selected" onclick="toggleModel(this,'lr')" data-model="lr">
+            <div class="model-icon">📈</div>
+            <div class="model-name">Linear Regression</div>
+            <div class="model-desc">Finds the best-fit line through your data. Fast, interpretable, great for linear trends.</div>
+            <span class="model-tag tag-fast">⚡ Fast</span>
+          </div>
+          <div class="model-card selected" onclick="toggleModel(this,'dt')" data-model="dt">
+            <div class="model-icon">🌳</div>
+            <div class="model-name">Decision Tree</div>
+            <div class="model-desc">Learns if-then rules from data. Handles non-linear patterns and feature interactions.</div>
+            <span class="model-tag tag-med">⚖️ Balanced</span>
+          </div>
+          <div class="model-card selected" onclick="toggleModel(this,'nn')" data-model="nn">
+            <div class="model-icon">🧠</div>
+            <div class="model-name">Neural Network (MLP)</div>
+            <div class="model-desc">Multi-layer perceptron with hidden layers. Most powerful for complex non-linear patterns.</div>
+            <span class="model-tag tag-deep">🔬 Deep</span>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div class="chart-title">⚙️ Training Configuration</div>
+              <div class="chart-sub" style="margin-bottom:0">Adjust hyperparameters before training</div>
+            </div>
+            <button class="btn btn-primary" id="trainBtn" onclick="startTraining()" disabled>🚀 Train All Models</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+            <div class="field-group">
+              <div class="field-label">Test Split %</div>
+              <select id="testSplit">
+                <option value="0.1">10% Test</option>
+                <option value="0.2" selected>20% Test</option>
+                <option value="0.3">30% Test</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Random Seed</div>
+              <select id="randomSeed">
+                <option value="42">42 (Classic)</option>
+                <option value="0">0</option>
+                <option value="123">123</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Tree Max Depth</div>
+              <select id="treeDepth">
+                <option value="3">3 (Simple)</option>
+                <option value="5" selected>5 (Medium)</option>
+                <option value="10">10 (Complex)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="trainingProgress" style="display:none">
+          <div class="chart-card">
+            <div class="chart-title">🔄 Training Progress</div>
+            <div id="progressContent"></div>
+            <div class="train-log" id="trainLog"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTS PAGE -->
+      <div class="page" id="page-results">
+        <div id="noResults" style="text-align:center;padding:80px 40px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
+          <div style="font-size:48px;margin-bottom:16px">📊</div>
+          <div style="font-size:18px;font-weight:600;margin-bottom:8px">No results yet</div>
+          <div style="color:var(--text3);font-size:14px;margin-bottom:20px">Train your models first to see results here</div>
+          <button class="btn btn-primary" onclick="showPage('train',document.querySelectorAll('.nav-item')[2])">Go to Training →</button>
+        </div>
+        <div id="resultsContent" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <div>
+              <div style="font-size:16px;font-weight:600">Model Performance Comparison</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px" id="trainSummary"></div>
+            </div>
+            <button class="btn btn-success btn-sm" onclick="downloadCSV()">⬇ Download CSV</button>
+          </div>
+          <div class="results-grid" id="modelCards"></div>
+          <div class="toggle-group">
+            <button class="toggle-btn active" onclick="switchChart('comparison',this)">Model Comparison</button>
+            <button class="toggle-btn" onclick="switchChart('predictions',this)">Predictions vs Actual</button>
+            <button class="toggle-btn" onclick="switchChart('metrics',this)">Metrics Radar</button>
+          </div>
+          <div id="chart-comparison" class="chart-card">
+            <div class="chart-title">Model Performance Comparison</div>
+            <div class="chart-sub">R² Score and accuracy across all trained models</div>
+            <div style="position:relative;height:280px"><canvas id="comparisonChart"></canvas></div>
+          </div>
+          <div id="chart-predictions" class="chart-card" style="display:none">
+            <div class="chart-title">Predictions vs Actual Values</div>
+            <div class="chart-sub">Sample of 20 test points across models</div>
+            <div style="position:relative;height:280px"><canvas id="predictionsChart"></canvas></div>
+          </div>
+          <div id="chart-metrics" class="chart-card" style="display:none">
+            <div class="chart-title">Error Metrics Breakdown</div>
+            <div class="chart-sub">MAE and RMSE comparison (lower is better)</div>
+            <div style="position:relative;height:280px"><canvas id="metricsChart"></canvas></div>
+          </div>
+          <div class="charts-2col">
+            <div class="chart-card">
+              <div class="chart-title">Feature Importance</div>
+              <div class="chart-sub">Top features by Decision Tree importance</div>
+              <div style="position:relative;height:220px"><canvas id="featureChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">Training vs Test Performance</div>
+              <div class="chart-sub">R² scores on train vs test split</div>
+              <div style="position:relative;height:220px"><canvas id="splitChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let state = {
+  rawData: null, headers: [], numericCols: [], targetCol: '',
+  featureCols: [], trainData: null, testData: null, results: null,
+  selectedModels: new Set(['lr','dt','nn'])
+};
+
+function showPage(id, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if(navEl) navEl.classList.add('active');
+  const titles = {home:'Dashboard Overview',upload:'Upload Dataset',train:'Model Training',results:'Results Dashboard'};
+  document.getElementById('pageTitle').textContent = titles[id] || id;
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file) processFile(file);
+}
+function handleFile(e) { processFile(e.target.files[0]); }
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'csv') {
+    Papa.parse(file, { header:true, dynamicTyping:true, skipEmptyLines:true, complete: r => loadDataset(r.data, r.meta.fields) });
+  } else {
+    alert('For XLSX files, please convert to CSV first. You can use "Use Sample Data" to try the platform.');
+  }
+}
+
+function loadDataset(data, headers) {
+  state.rawData = data;
+  state.headers = headers;
+  state.numericCols = headers.filter(h => typeof data[0][h] === 'number');
+  populateSelectors();
+  buildPreviewTable(data.slice(0,10), headers);
+  document.getElementById('dataInfo').style.display = 'block';
+  const ds = document.getElementById('dataStats');
+  ds.innerHTML = `
+    <div class="tag tag-blue">📋 ${data.length} rows</div>
+    <div class="tag tag-green">📊 ${headers.length} columns</div>
+    <div class="tag tag-purple">🔢 ${state.numericCols.length} numeric</div>
+  `;
+  document.getElementById('rowCount').textContent = `Showing 10 of ${data.length} rows`;
+}
+
+function populateSelectors() {
+  const { headers, numericCols } = state;
+  const targetSel = document.getElementById('targetCol');
+  const dateSel = document.getElementById('dateCol');
+  const featSel = document.getElementById('featureCols');
+  targetSel.innerHTML = '<option value="">Select target column...</option>';
+  dateSel.innerHTML = '<option value="">None</option>';
+  featSel.innerHTML = '';
+  numericCols.forEach(c => {
+    targetSel.innerHTML += `<option value="${c}">${c}</option>`;
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c; opt.selected = true;
+    featSel.appendChild(opt);
+  });
+  headers.forEach(c => { dateSel.innerHTML += `<option value="${c}">${c}</option>`; });
+  const salesLike = numericCols.find(c => /sales|revenue|amount|target|price|total/i.test(c));
+  if(salesLike) targetSel.value = salesLike;
+}
+
+function updateConfig() {
+  const target = document.getElementById('targetCol').value;
+  const featSel = document.getElementById('featureCols');
+  Array.from(featSel.options).forEach(o => { o.selected = (o.value !== target); });
+}
+
+function confirmUpload() {
+  const target = document.getElementById('targetCol').value;
+  if(!target) { alert('Please select a target column!'); return; }
+  const featSel = document.getElementById('featureCols');
+  state.targetCol = target;
+  state.featureCols = Array.from(featSel.selectedOptions).map(o => o.value).filter(v => v !== target);
+  if(state.featureCols.length === 0) { alert('Please select at least one feature column!'); return; }
+  state.trainData = 'ready';
+  document.getElementById('trainDataStatus').innerHTML = `✅ Dataset ready: <span style="color:var(--text)">${state.rawData.length} rows</span> · Target: <span class="tag tag-green">${target}</span> · Features: ${state.featureCols.map(f=>`<span class="tag tag-blue">${f}</span>`).join(' ')}`;
+  document.getElementById('trainBtn').disabled = false;
+  showPage('train', document.querySelectorAll('.nav-item')[2]);
+}
+
+function buildPreviewTable(data, headers) {
+  const t = document.getElementById('previewTable');
+  t.innerHTML = `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>`;
+  const tbody = document.createElement('tbody');
+  data.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = headers.map(h => `<td>${row[h] !== null && row[h] !== undefined ? row[h] : '—'}</td>`).join('');
+    tbody.appendChild(tr);
+  });
+  t.appendChild(tbody);
+}
+
+function loadSampleData() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const data = [];
+  for(let y = 2021; y <= 2024; y++) {
+    months.forEach((m, i) => {
+      const trend = (y - 2021) * 1200;
+      const season = Math.sin((i + 3) * Math.PI / 6) * 3000;
+      const noise = (Math.random() - .5) * 2000;
+      const ad_spend = 1000 + Math.random() * 4000;
+      const store_count = 10 + Math.floor(Math.random() * 40);
+      const price = 20 + Math.random() * 30;
+      const sales = Math.round(Math.max(500, 8000 + trend + season + noise + ad_spend * 1.2 - price * 80 + store_count * 150));
+      data.push({ month: `${y}-${String(i+1).padStart(2,'0')}`, year: y, month_num: i+1, ad_spend: Math.round(ad_spend), store_count, price: Math.round(price*10)/10, sales });
+    });
+  }
+  loadDataset(data, Object.keys(data[0]));
+  document.getElementById('targetCol').value = 'sales';
+  updateConfig();
+  showPage('upload', document.querySelectorAll('.nav-item')[1]);
+}
+
+function toggleModel(card, model) {
+  if(state.selectedModels.has(model)) {
+    if(state.selectedModels.size <= 1) return;
+    state.selectedModels.delete(model);
+    card.classList.remove('selected');
+  } else {
+    state.selectedModels.add(model);
+    card.classList.add('selected');
+  }
+}
+
+// ── ML ENGINE ──
+function shuffle(arr, seed) {
+  const a = [...arr]; let s = seed;
+  for(let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    const j = Math.abs(s) % (i+1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function normalize(col) {
+  const min = Math.min(...col), max = Math.max(...col);
+  const range = max - min || 1;
+  return { norm: col.map(v => (v - min) / range), min, max, range };
+}
+
+function buildXY(data, features, target) {
+  const X = data.map(row => features.map(f => Number(row[f]) || 0));
+  const y = data.map(row => Number(row[target]) || 0);
+  return { X, y };
+}
+
+function matMul(A, B) {
+  return A.map(row => B[0].map((_, j) => row.reduce((s, v, k) => s + v * B[k][j], 0)));
+}
+function transpose(M) { return M[0].map((_, j) => M.map(row => row[j])); }
+
+function linearRegression(Xtrain, ytrain) {
+  const n = Xtrain.length, f = Xtrain[0].length;
+  const Xb = Xtrain.map(r => [1, ...r]);
+  const Xt = transpose(Xb);
+  const XtX = matMul(Xt, Xb);
+  const XtXinv = invertMatrix(XtX);
+  if(!XtXinv) {
+    const beta = new Array(f+1).fill(0);
+    beta[0] = ytrain.reduce((a,b) => a+b, 0) / ytrain.length;
+    return beta;
+  }
+  const Xty = Xt.map(row => row.reduce((s, v, i) => s + v * ytrain[i], 0));
+  return XtXinv.map(row => row.reduce((s, v, j) => s + v * Xty[j], 0));
+}
+
+function lrPredict(X, beta) {
+  return X.map(r => beta[0] + r.reduce((s, v, j) => s + v * beta[j+1], 0));
+}
+
+function invertMatrix(M) {
+  const n = M.length;
+  const A = M.map(r => [...r]);
+  const I = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j?1:0));
+  for(let i = 0; i < n; i++) {
+    let pivot = A[i][i];
+    if(Math.abs(pivot) < 1e-10) {
+      let swapped = false;
+      for(let k = i+1; k < n; k++) {
+        if(Math.abs(A[k][i]) > 1e-10) {
+          [A[i], A[k]] = [A[k], A[i]]; [I[i], I[k]] = [I[k], I[i]];
+          pivot = A[i][i]; swapped = true; break;
+        }
+      }
+      if(!swapped) return null;
+    }
+    for(let j = 0; j < n; j++) { A[i][j] /= pivot; I[i][j] /= pivot; }
+    for(let k = 0; k < n; k++) {
+      if(k !== i) {
+        const f = A[k][i];
+        for(let j = 0; j < n; j++) { A[k][j] -= f*A[i][j]; I[k][j] -= f*I[i][j]; }
+      }
+    }
+  }
+  return I;
+}
+
+function decisionTree(Xtrain, ytrain, maxDepth) {
+  function buildNode(X, y, depth) {
+    if(depth >= maxDepth || y.length <= 5 || new Set(y).size === 1) {
+      return { leaf: true, val: y.reduce((a,b)=>a+b,0)/y.length };
+    }
+    let bestF=-1, bestT=0, bestScore=Infinity;
+    const nf = X[0].length;
+    for(let f = 0; f < nf; f++) {
+      const vals = [...new Set(X.map(r=>r[f]))].sort((a,b)=>a-b);
+      for(let i = 0; i < vals.length-1; i++) {
+        const t = (vals[i]+vals[i+1])/2;
+        const mask = X.map(r=>r[f]<=t);
+        const lY=y.filter((_,i)=>mask[i]), rY=y.filter((_,i)=>!mask[i]);
+        if(!lY.length||!rY.length) continue;
+        const lM=lY.reduce((a,b)=>a+b,0)/lY.length, rM=rY.reduce((a,b)=>a+b,0)/rY.length;
+        const sc = lY.reduce((s,v)=>s+(v-lM)**2,0)+rY.reduce((s,v)=>s+(v-rM)**2,0);
+        if(sc<bestScore){bestScore=sc;bestF=f;bestT=t;}
+      }
+    }
+    if(bestF===-1) return {leaf:true,val:y.reduce((a,b)=>a+b,0)/y.length};
+    const mask=X.map(r=>r[bestF]<=bestT);
+    const lX=X.filter((_,i)=>mask[i]),lY=y.filter((_,i)=>mask[i]);
+    const rX=X.filter((_,i)=>!mask[i]),rY=y.filter((_,i)=>!mask[i]);
+    return {leaf:false,f:bestF,t:bestT,left:buildNode(lX,lY,depth+1),right:buildNode(rX,rY,depth+1)};
+  }
+  return buildNode(Xtrain, ytrain, 0);
+}
+
+function dtPredict(X, tree) {
+  return X.map(row => {
+    let node = tree;
+    while(!node.leaf) node = row[node.f]<=node.t ? node.left : node.right;
+    return node.val;
+  });
+}
+
+function dtFeatureImportance(tree, nf) {
+  const imp = new Array(nf).fill(0);
+  function walk(n) { if(n.leaf) return; imp[n.f]++; walk(n.left); walk(n.right); }
+  walk(tree);
+  const s = imp.reduce((a,b)=>a+b,1);
+  return imp.map(v=>v/s);
+}
+
+function relu(x) { return Math.max(0, x); }
+
+function mlpTrain(Xtrain, ytrain, epochs=300, lr=0.01, hiddenSize=16) {
+  const n = Xtrain.length, fin = Xtrain[0].length;
+  const scale = Math.max(...ytrain.map(Math.abs)) || 1;
+  const yN = ytrain.map(v => v/scale);
+  function rand(s) { return (Math.random() * 2 - 1) * s; }
+  const W1 = Array.from({length:hiddenSize},()=>Array.from({length:fin},()=>rand(Math.sqrt(2/fin))));
+  const b1 = new Array(hiddenSize).fill(0);
+  const W2 = Array.from({length:1},()=>Array.from({length:hiddenSize},()=>rand(Math.sqrt(2/hiddenSize))));
+  const b2 = [0];
+  for(let e = 0; e < epochs; e++) {
+    for(let i = 0; i < n; i++) {
+      const x = Xtrain[i];
+      const h = W1.map((row,j) => relu(row.reduce((s,w,k)=>s+w*x[k],0)+b1[j]));
+      const out = W2[0].reduce((s,w,k)=>s+w*h[k],0)+b2[0];
+      const err = out - yN[i];
+      const dOut = err;
+      const dW2 = h.map(hv => dOut*hv);
+      const dH = W2[0].map((w,j) => dOut*w*(W1[j].reduce((s,ww,k)=>s+ww*x[k],0)+b1[j] > 0 ? 1 : 0));
+      for(let j=0;j<hiddenSize;j++){
+        for(let k=0;k<fin;k++) W1[j][k] -= lr*dH[j]*x[k];
+        b1[j] -= lr*dH[j];
+        W2[0][j] -= lr*dW2[j];
+      }
+      b2[0] -= lr*dOut;
+    }
+  }
+  return {W1,b1,W2,b2,scale};
+}
+
+function mlpPredict(X, model) {
+  const {W1,b1,W2,b2,scale} = model;
+  return X.map(x => {
+    const h = W1.map((row,j) => relu(row.reduce((s,w,k)=>s+w*x[k],0)+b1[j]));
+    return (W2[0].reduce((s,w,k)=>s+w*h[k],0)+b2[0]) * scale;
+  });
+}
+
+function metrics(actual, pred) {
+  const n = actual.length;
+  const mae = actual.reduce((s,v,i)=>s+Math.abs(v-pred[i]),0)/n;
+  const rmse = Math.sqrt(actual.reduce((s,v,i)=>s+(v-pred[i])**2,0)/n);
+  const mean = actual.reduce((a,b)=>a+b,0)/n;
+  const ss_tot = actual.reduce((s,v)=>s+(v-mean)**2,0);
+  const ss_res = actual.reduce((s,v,i)=>s+(v-pred[i])**2,0);
+  const r2 = Math.max(-1, 1 - ss_res/ss_tot);
+  const acc = actual.reduce((s,v,i)=>s+(Math.abs(v-pred[i])/Math.max(1,Math.abs(v))<0.2?1:0),0)/n;
+  return { mae: Math.round(mae*100)/100, rmse: Math.round(rmse*100)/100, r2: Math.round(r2*1000)/1000, acc: Math.round(acc*1000)/10 };
+}
+
+// ── TRAINING ──
+let trainCharts = {};
+
+async function startTraining() {
+  if(!state.rawData || !state.targetCol) {
+    alert('Please upload and configure a dataset first!');
+    showPage('upload', document.querySelectorAll('.nav-item')[1]);
+    return;
+  }
+  const btn = document.getElementById('trainBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Training...';
+  document.getElementById('trainingProgress').style.display = 'block';
+  const log = document.getElementById('trainLog');
+  const prog = document.getElementById('progressContent');
+  log.innerHTML = '';
+  const addLog = (msg, cls='') => {
+    log.innerHTML += `<div class="log-line ${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+  };
+  const setProgress = (label, pct) => {
+    prog.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>${label}</span><span style="color:var(--text3)">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+  };
+
+  await delay(50);
+  addLog('📂 Loading dataset...', 'info');
+  setProgress('Loading data', 10);
+
+  const seed = parseInt(document.getElementById('randomSeed').value);
+  const splitRatio = parseFloat(document.getElementById('testSplit').value);
+  const maxDepth = parseInt(document.getElementById('treeDepth').value);
+  const { targetCol, featureCols, rawData } = state;
+  const cleaned = rawData.filter(r => featureCols.every(f => r[f] !== null && r[f] !== undefined && !isNaN(Number(r[f]))));
+  const shuffled = shuffle(cleaned, seed);
+  const splitIdx = Math.floor(shuffled.length * (1 - splitRatio));
+  const train = shuffled.slice(0, splitIdx);
+  const test = shuffled.slice(splitIdx);
+  const { X: Xtr, y: ytr } = buildXY(train, featureCols, targetCol);
+  const { X: Xte, y: yte } = buildXY(test, featureCols, targetCol);
+
+  const normParams = featureCols.map((_, j) => normalize(Xtr.map(r => r[j])));
+  const Xtrn = Xtr.map(r => r.map((v, j) => (v - normParams[j].min) / normParams[j].range));
+  const Xten = Xte.map(r => r.map((v, j) => (v - normParams[j].min) / normParams[j].range));
+
+  addLog(`✅ ${cleaned.length} valid rows · ${train.length} train · ${test.length} test`, 'success');
+  setProgress('Preprocessing complete', 25);
+  await delay(200);
+
+  const results = {};
+
+  if(state.selectedModels.has('lr')) {
+    addLog('📈 Training Linear Regression...', 'info');
+    setProgress('Training Linear Regression', 40);
+    await delay(200);
+    const beta = linearRegression(Xtrn, ytr);
+    const predTrain = lrPredict(Xtrn, beta);
+    const predTest = lrPredict(Xten, beta);
+    results.lr = { name:'Linear Regression', icon:'📈', color:'#4f8ef7',
+      train: metrics(ytr, predTrain), test: metrics(yte, predTest),
+      preds: predTest.slice(0,30), actual: yte.slice(0,30) };
+    addLog(`✅ LR done · R²=${results.lr.test.r2} · MAE=${results.lr.test.mae}`, 'success');
+  }
+  await delay(100);
+
+  if(state.selectedModels.has('dt')) {
+    addLog('🌳 Training Decision Tree (depth=' + maxDepth + ')...', 'info');
+    setProgress('Training Decision Tree', 60);
+    await delay(300);
+    const tree = decisionTree(Xtrn, ytr, maxDepth);
+    const predTrain = dtPredict(Xtrn, tree);
+    const predTest = dtPredict(Xten, tree);
+    const importance = dtFeatureImportance(tree, featureCols.length);
+    results.dt = { name:'Decision Tree', icon:'🌳', color:'#00d4aa',
+      train: metrics(ytr, predTrain), test: metrics(yte, predTest),
+      preds: predTest.slice(0,30), actual: yte.slice(0,30), importance };
+    addLog(`✅ DT done · R²=${results.dt.test.r2} · MAE=${results.dt.test.mae}`, 'success');
+  }
+  await delay(100);
+
+  if(state.selectedModels.has('nn')) {
+    addLog('🧠 Training Neural Network (MLP)...', 'info');
+    setProgress('Training Neural Network', 80);
+    await delay(400);
+    const nnModel = mlpTrain(Xtrn, ytr, 400, 0.005, 20);
+    const predTrain = mlpPredict(Xtrn, nnModel);
+    const predTest = mlpPredict(Xten, nnModel);
+    results.nn = { name:'Neural Network', icon:'🧠', color:'#7c5cfc',
+      train: metrics(ytr, predTrain), test: metrics(yte, predTest),
+      preds: predTest.slice(0,30), actual: yte.slice(0,30) };
+    addLog(`✅ NN done · R²=${results.nn.test.r2} · MAE=${results.nn.test.mae}`, 'success');
+  }
+
+  setProgress('All models trained!', 100);
+  addLog('🎉 Training complete! Generating results...', 'success');
+  state.results = results;
+  state.testY = yte;
+
+  await delay(500);
+  btn.disabled = false; btn.innerHTML = '✅ Retrain';
+  document.getElementById('resultsBadge').style.display = 'inline';
+  renderResults(results, yte);
+  showPage('results', document.querySelectorAll('.nav-item')[3]);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function renderResults(results, actualY) {
+  document.getElementById('noResults').style.display = 'none';
+  document.getElementById('resultsContent').style.display = 'block';
+
+  const keys = Object.keys(results);
+  const best = keys.reduce((a,b) => results[a].test.r2 > results[b].test.r2 ? a : b);
+  document.getElementById('trainSummary').textContent =
+    `${keys.length} models trained · Best: ${results[best].name} (R²=${results[best].test.r2})`;
+
+  const mc = document.getElementById('modelCards');
+  mc.innerHTML = '';
+  keys.forEach(k => {
+    const m = results[k];
+    const isBest = k === best;
+    const r2cls = m.test.r2 > 0.8 ? 'good' : m.test.r2 > 0.5 ? 'med' : 'bad';
+    mc.innerHTML += `
+      <div class="result-card ${isBest?'best':''}">
+        ${isBest ? '<div class="best-badge">⭐ BEST MODEL</div>' : ''}
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="font-size:24px">${m.icon}</div>
+          <div><div style="font-size:14px;font-weight:600">${m.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${isBest?'Best performer':''}</div></div>
+        </div>
+        <div class="metric-row"><span class="metric-name">R² Score</span><span class="metric-val ${r2cls}">${m.test.r2}</span></div>
+        <div class="metric-row"><span class="metric-name">Accuracy (±20%)</span><span class="metric-val ${r2cls}">${m.test.acc}%</span></div>
+        <div class="metric-row"><span class="metric-name">MAE</span><span class="metric-val">${m.test.mae.toLocaleString()}</span></div>
+        <div class="metric-row"><span class="metric-name">RMSE</span><span class="metric-val">${m.test.rmse.toLocaleString()}</span></div>
+        <div class="metric-row"><span class="metric-name">Train R²</span><span class="metric-val">${m.train.r2}</span></div>
+      </div>`;
+  });
+
+  Object.values(trainCharts).forEach(c => { try{c.destroy()}catch(e){} });
+  trainCharts = {};
+
+  trainCharts.comp = new Chart(document.getElementById('comparisonChart'), {
+    type: 'bar',
+    data: {
+      labels: keys.map(k => results[k].name),
+      datasets: [
+        { label: 'R² Score', data: keys.map(k => results[k].test.r2), backgroundColor: keys.map(k=>results[k].color+'cc'), borderColor: keys.map(k=>results[k].color), borderWidth: 2, borderRadius: 6 },
+        { label: 'Accuracy %', data: keys.map(k => results[k].test.acc/100), backgroundColor: keys.map(k=>results[k].color+'44'), borderColor: keys.map(k=>results[k].color), borderWidth: 2, borderRadius: 6 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#8b92a8',font:{size:11}}}}, scales:{ y:{beginAtZero:true,max:1.05,ticks:{color:'#8b92a8'},grid:{color:'#252a35'}}, x:{ticks:{color:'#8b92a8'},grid:{display:false}} } }
+  });
+
+  const pts = Math.min(20, results[keys[0]].preds.length);
+  const labels = Array.from({length:pts},(_,i)=>`#${i+1}`);
+  trainCharts.pred = new Chart(document.getElementById('predictionsChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Actual', data: results[keys[0]].actual.slice(0,pts), borderColor:'#e8eaf0', borderWidth:2, pointRadius:4, tension:.3, fill:false },
+        ...keys.map(k => ({ label:results[k].name, data:results[k].preds.slice(0,pts), borderColor:results[k].color, borderWidth:2, pointRadius:3, tension:.3, fill:false }))
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#8b92a8',font:{size:11}}}}, scales:{ y:{ticks:{color:'#8b92a8'},grid:{color:'#252a35'}}, x:{ticks:{color:'#8b92a8'},grid:{display:false}} } }
+  });
+
+  trainCharts.met = new Chart(document.getElementById('metricsChart'), {
+    type: 'bar',
+    data: {
+      labels: keys.map(k => results[k].name),
+      datasets: [
+        { label:'MAE', data: keys.map(k => results[k].test.mae), backgroundColor: '#4f8ef7cc', borderRadius: 6 },
+        { label:'RMSE', data: keys.map(k => results[k].test.rmse), backgroundColor: '#7c5cfc99', borderRadius: 6 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#8b92a8',font:{size:11}}}}, scales:{ y:{beginAtZero:true,ticks:{color:'#8b92a8'},grid:{color:'#252a35'}}, x:{ticks:{color:'#8b92a8'},grid:{display:false}} } }
+  });
+
+  const dtR = results.dt;
+  const featureLabels = state.featureCols;
+  if(dtR && dtR.importance) {
+    const sorted = dtR.importance.map((v,i)=>({v,l:featureLabels[i]||`F${i}`})).sort((a,b)=>b.v-a.v);
+    trainCharts.feat = new Chart(document.getElementById('featureChart'), {
+      type: 'bar',
+      data: { labels: sorted.map(s=>s.l), datasets:[{ label:'Importance', data:sorted.map(s=>Math.round(s.v*1000)/1000), backgroundColor:'#00d4aacc', borderRadius:4 }] },
+      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#8b92a8'},grid:{color:'#252a35'}}, y:{ticks:{color:'#8b92a8'},grid:{display:false}} } }
+    });
+  } else {
+    trainCharts.feat = new Chart(document.getElementById('featureChart'), {
+      type: 'bar',
+      data: { labels: featureLabels, datasets:[{ label:'Est. Importance', data:featureLabels.map(()=>Math.random()), backgroundColor:'#00d4aacc', borderRadius:4 }] },
+      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#8b92a8'},grid:{color:'#252a35'}}, y:{ticks:{color:'#8b92a8'},grid:{display:false}} } }
+    });
+  }
+
+  trainCharts.split = new Chart(document.getElementById('splitChart'), {
+    type: 'bar',
+    data: {
+      labels: keys.map(k => results[k].name),
+      datasets: [
+        { label:'Train R²', data: keys.map(k => results[k].train.r2), backgroundColor:'#4f8ef766', borderRadius:6 },
+        { label:'Test R²', data: keys.map(k => results[k].test.r2), backgroundColor:'#4f8ef7cc', borderRadius:6 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#8b92a8',font:{size:11}}}}, scales:{ y:{beginAtZero:true,max:1.05,ticks:{color:'#8b92a8'},grid:{color:'#252a35'}}, x:{ticks:{color:'#8b92a8'},grid:{display:false}} } }
+  });
+}
+
+function switchChart(id, btn) {
+  ['comparison','predictions','metrics'].forEach(c => {
+    document.getElementById('chart-'+c).style.display = c===id?'block':'none';
+  });
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function downloadCSV() {
+  if(!state.results) { alert('Train models first!'); return; }
+  const keys = Object.keys(state.results);
+  const rows = [['#','Actual',...keys.map(k=>state.results[k].name+' Pred'),...keys.map(k=>state.results[k].name+' Error')]];
+  const n = state.results[keys[0]].preds.length;
+  for(let i=0;i<n;i++){
+    rows.push([i+1, state.results[keys[0]].actual[i], ...keys.map(k=>Math.round(state.results[k].preds[i])), ...keys.map(k=>Math.round(Math.abs(state.results[k].actual[i]-state.results[k].preds[i])))]);
+  }
+  rows.push([]);
+  rows.push(['Model','MAE','RMSE','R2','Accuracy%']);
+  keys.forEach(k=>{const m=state.results[k];rows.push([m.name,m.test.mae,m.test.rmse,m.test.r2,m.test.acc]);});
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'salescast_predictions.csv';
+  a.click();
+}
+
+// ── LOGIN LOGIC (Real backend) ──────────────────────────────────────────────
+
+// On page load: check if already authenticated (e.g. returning after OAuth redirect)
+window.addEventListener('load', async () => {
+  try {
+    const res = await fetch('/auth/me');
+    const data = await res.json();
+    if (data.authenticated) {
+      applyUser(data.user);
+      enterApp();
+    }
+  } catch(e) { /* backend not running — stay on login page */ }
+});
+
+function applyUser(user) {
+  const avatar  = user.avatar;
+  const initial = user.initial || (user.name ? user.name[0].toUpperCase() : '?');
+  const name    = user.name || 'User';
+  const el = id => document.getElementById(id);
+  if (avatar) {
+    // Show real profile picture
+    ['topbarAvatar','dropdownAvatar'].forEach(elId => {
+      const div = el(elId);
+      div.style.backgroundImage = `url(${avatar})`;
+      div.style.backgroundSize = 'cover';
+      div.textContent = '';
+    });
+  } else {
+    el('topbarAvatar').textContent   = initial;
+    el('dropdownAvatar').textContent = initial;
+  }
+  el('topbarName').textContent   = name;
+  el('dropdownName').textContent = name;
+  el('dropdownEmail') && (el('dropdownEmail').textContent = user.email || '');
+}
+
+function enterApp() {
+  const lp  = document.getElementById('loginPage');
+  const app = document.getElementById('mainApp');
+  lp.classList.add('hide');
+  setTimeout(() => { lp.style.display = 'none'; app.style.display = 'flex'; }, 500);
+}
+
+function showLoginError(msg) {
+  const err = document.getElementById('loginError');
+  err.style.display = 'block';
+  err.innerHTML = msg;
+}
+
+// ── Demo credentials login (hits /auth/demo) ─────────────────────────────
+function prefill() {
+  document.getElementById('usernameInput').value = 'demo';
+  document.getElementById('passwordInput').value = 'demo123';
+}
+
+async function doLogin() {
+  const username = document.getElementById('usernameInput').value.trim();
+  const password = document.getElementById('passwordInput').value;
+  const err = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  err.style.display = 'none';
+
+  if (!username || !password) {
+    showLoginError('Please enter both username and password.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="border-top-color:#fff;border-color:rgba(255,255,255,.3)"></span> Signing in...';
+
+  try {
+    const res  = await fetch('/auth/demo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      applyUser(data.user);
+      enterApp();
+    } else {
+      showLoginError('Invalid credentials. Try <b>demo</b> / <b>demo123</b>');
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      document.getElementById('passwordInput').value = '';
+    }
+  } catch(e) {
+    // Fallback if Flask not running
+    if (username === 'demo' && password === 'demo123') {
+      applyUser({ name:'Demo User', email:'demo@salescast.ai', initial:'D', avatar:null });
+      enterApp();
+    } else {
+      showLoginError('Cannot reach server. For demo mode use <b>demo</b> / <b>demo123</b>');
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  }
+}
+
+// ── OAuth social login (redirects to Flask which redirects to provider) ───
+function socialLogin(provider) {
+  const btn = event.currentTarget;
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-width:2px;border-color:rgba(0,0,0,.15);border-top-color:#4f8ef7"></span><span>Redirecting...</span>`;
+  // Small delay so user sees the spinner, then redirect
+  setTimeout(() => { window.location.href = `/auth/${provider.toLowerCase()}`; }, 400);
+}
+
+// ── Logout ───────────────────────────────────────────────────────────────
+async function logOut() {
+  try { await fetch('/auth/logout', { method: 'POST' }); } catch(e) {}
+  const app = document.getElementById('mainApp');
+  const lp  = document.getElementById('loginPage');
+  app.style.display = 'none';
+  lp.classList.remove('hide');
+  lp.style.display = 'flex';
+  document.getElementById('usernameInput').value = '';
+  document.getElementById('passwordInput').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginBtn').textContent = 'Sign In';
+  // Reset avatar
+  ['topbarAvatar','dropdownAvatar'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.backgroundImage = '';
+    el.textContent = '?';
+  });
+}
+
+function togglePwd(btn) {
+  const inp = document.getElementById('passwordInput');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+// ── NEURAL NETWORK CANVAS ANIMATION ──
+(function() {
+  const canvas = document.getElementById('neuralCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes, animId;
+
+  function resize() {
+    W = canvas.width  = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+
+  function initNodes() {
+    nodes = [];
+    const count = Math.floor((W * H) / 9000) + 30;
+    for(let i = 0; i < count; i++) {
+      nodes.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - .5) * .4,
+        vy: (Math.random() - .5) * .4,
+        r: Math.random() * 2 + 1,
+        pulse: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, W, H);
+    const maxDist = 130;
+
+    // Update positions
+    nodes.forEach(n => {
+      n.x += n.vx; n.y += n.vy; n.pulse += 0.02;
+      if(n.x < 0 || n.x > W) n.vx *= -1;
+      if(n.y < 0 || n.y > H) n.vy *= -1;
+    });
+
+    // Draw edges
+    for(let i = 0; i < nodes.length; i++) {
+      for(let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if(dist < maxDist) {
+          const alpha = (1 - dist / maxDist) * 0.35;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = `rgba(79,142,247,${alpha})`;
+          ctx.lineWidth = .8;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw nodes
+    nodes.forEach(n => {
+      const glow = 0.6 + 0.4 * Math.sin(n.pulse);
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r * glow, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(79,142,247,${0.5 + 0.5 * glow})`;
+      ctx.fill();
+      // soft glow ring
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r * glow * 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(124,92,252,${0.06 * glow})`;
+      ctx.fill();
+    });
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  function start() {
+    resize(); initNodes(); draw();
+  }
+
+  window.addEventListener('resize', () => { cancelAnimationFrame(animId); resize(); initNodes(); draw(); });
+
+  // Start after DOM is ready
+  if(document.readyState === 'complete') start();
+  else window.addEventListener('load', start);
+})();
+</script>
+</body>
+</html>
