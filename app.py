@@ -1,39 +1,38 @@
 """
-app.py — SalesCast AI · Flask backend
-======================================
-Handles:
-  • Static front-end serving
-  • OAuth 2.0  (Google / GitHub / Microsoft)
-  • Demo credentials login
-  • /api/train   → delegates to ml_engine.run_pipeline()
-  • /api/predict → single-row inference with trained models
+app.py — SalesCast AI · Flask backend  (Vercel-compatible)
+===========================================================
+Key changes vs. original
+  • PyTorch removed — ml_engine now uses sklearn MLP
+  • Trained models pickled to /tmp/salescast_models.pkl so the
+    /api/predict endpoint can load them even in a fresh invocation
+  • Static files served from the 'static' folder (unchanged)
 """
 
 import os
 import json
-import numpy as np
+import pickle
 import secrets
 import traceback
-import requests
+
+import numpy as np
 import pandas as pd
-import pickle
+import requests
+
 from functools import wraps
+from urllib.parse import urlencode
+
 from flask import (
     Flask, redirect, request, session,
     url_for, jsonify, send_from_directory,
 )
-from urllib.parse import urlencode
 
-# ── ML engine (server-side)
 from ml_engine import run_pipeline
 
 # ─────────────────────────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
-# Store trained models in memory (for predictions)
-trained_models = {}
-training_scaler = None
+MODELS_PATH = "/tmp/salescast_models.pkl"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # OAuth provider config
@@ -70,19 +69,17 @@ OAUTH = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 def convert_numpy(obj):
-    """Recursively convert numpy types to native Python types for JSON serialization"""
     if isinstance(obj, dict):
         return {k: convert_numpy(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [convert_numpy(v) for v in obj]
-    elif isinstance(obj, np.ndarray):
+    if isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, (np.float32, np.float64)):
+    if isinstance(obj, (np.float32, np.float64)):
         return float(obj)
-    elif isinstance(obj, (np.int32, np.int64)):
+    if isinstance(obj, (np.int32, np.int64)):
         return int(obj)
-    else:
-        return obj
+    return obj
 
 
 def login_required(f):
@@ -100,6 +97,28 @@ def _get_redirect_uri(provider: str) -> str:
 
 def _json_error(message: str, code: int = 400):
     return jsonify({"status": "error", "message": message}), code
+
+
+def _save_models(model_objects, feature_cols, target_col):
+    """Pickle trained models to /tmp for reuse by /api/predict."""
+    try:
+        with open(MODELS_PATH, "wb") as f:
+            pickle.dump({
+                "model_objects": model_objects,
+                "feature_cols":  feature_cols,
+                "target_col":    target_col,
+            }, f)
+    except Exception as e:
+        print(f"[WARN] Could not save models to /tmp: {e}")
+
+
+def _load_models():
+    """Load pickled models from /tmp.  Returns None if not found."""
+    try:
+        with open(MODELS_PATH, "rb") as f:
+            return pickle.load(f)
+    except Exception:
+        return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -140,7 +159,7 @@ def demo_login():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Auth — OAuth  (start → provider → callback)
+# Auth — OAuth
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/auth/<provider>")
@@ -151,24 +170,21 @@ def oauth_start(provider):
     cfg = OAUTH[provider]
     if not cfg["client_id"]:
         return (
-            f"""
-            <html><body style='font-family:sans-serif;padding:40px;
-                               background:#0a0b0f;color:#e8eaf0'>
+            f"""<html><body style='font-family:sans-serif;padding:40px;
+                background:#0a0b0f;color:#e8eaf0'>
             <h2>⚠️ {provider.title()} OAuth Not Configured</h2>
             <p style='color:#8b92a8'>Add
             <code style='background:#181b22;padding:2px 6px;border-radius:4px'>
             {provider.upper()}_CLIENT_ID</code> and
             <code style='background:#181b22;padding:2px 6px;border-radius:4px'>
-            {provider.upper()}_CLIENT_SECRET</code> to your
-            <code>.env</code> file.</p>
+            {provider.upper()}_CLIENT_SECRET</code> to your environment variables.</p>
             <p><a href='/' style='color:#4f8ef7'>← Back to app</a></p>
-            </body></html>
-            """,
+            </body></html>""",
             400,
         )
 
-    state                  = secrets.token_urlsafe(16)
-    session["oauth_state"] = state
+    state                     = secrets.token_urlsafe(16)
+    session["oauth_state"]    = state
     session["oauth_provider"] = provider
 
     params = {
@@ -222,33 +238,24 @@ def oauth_callback(provider):
         "Authorization": f"Bearer {access_token}",
         "Accept":        "application/json",
     }
-    user_data = requests.get(
-        cfg["userinfo_url"], headers=user_headers, timeout=10
-    ).json()
+    user_data = requests.get(cfg["userinfo_url"], headers=user_headers, timeout=10).json()
 
     if provider == "google":
         name   = user_data.get("name", "Google User")
         email  = user_data.get("email", "")
         avatar = user_data.get("picture")
-
     elif provider == "github":
         name   = user_data.get("name") or user_data.get("login", "GitHub User")
         email  = user_data.get("email", "")
         avatar = user_data.get("avatar_url")
         if not email:
-            emails = requests.get(
-                "https://api.github.com/user/emails",
-                headers=user_headers, timeout=10,
-            ).json()
-            email = next(
-                (e["email"] for e in emails if e.get("primary")), ""
-            )
-
+            emails = requests.get("https://api.github.com/user/emails",
+                                  headers=user_headers, timeout=10).json()
+            email = next((e["email"] for e in emails if e.get("primary")), "")
     elif provider == "microsoft":
         name   = user_data.get("displayName", "MS User")
         email  = user_data.get("mail") or user_data.get("userPrincipalName", "")
         avatar = None
-
     else:
         name, email, avatar = "User", "", None
 
@@ -280,93 +287,65 @@ def logout():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ML API  —  /api/train
+# ML API — /api/train
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/train", methods=["POST"])
 def train_model():
-    global trained_models, training_scaler
-    
     try:
         print("\n[SERVER] Received training request...")
         data = request.get_json()
-        
+
         if not data:
-            print("[ERROR] No JSON payload received.")
             return _json_error("Empty request payload.")
 
-        records = data.get("records", [])
-        target_col = data.get("target_col")
+        records      = data.get("records", [])
+        target_col   = data.get("target_col")
         feature_cols = data.get("feature_cols", [])
-        
-        print(f"[INFO] Initial record count: {len(records)}")
-        print(f"[INFO] Target: {target_col} | Features: {feature_cols}")
 
-        # --- Data Validation and Cleaning ---
-        df = pd.DataFrame(records)
-        
-        # Check if columns exist
-        required_cols = feature_cols + [target_col]
-        missing = [c for c in required_cols if c not in df.columns]
+        print(f"[INFO] Records: {len(records)}  Target: {target_col}  Features: {feature_cols}")
+
+        df       = pd.DataFrame(records)
+        required = feature_cols + [target_col]
+        missing  = [c for c in required if c not in df.columns]
         if missing:
-            err_msg = f"Missing columns in dataset: {missing}"
-            print(f"[ERROR] {err_msg}")
-            return _json_error(err_msg)
+            return _json_error(f"Missing columns: {missing}")
 
-        # Force Numeric conversion
-        print("[PROCESS] Cleaning and converting data types...")
-        for col in required_cols:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+        for col in required:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        # Drop rows with NaN or Infinite values
-        df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=required_cols)
-        
-        print(f"[INFO] Cleaned record count: {len(df)}")
+        df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=required)
+        print(f"[INFO] Cleaned rows: {len(df)}")
 
         if len(df) < 5:
-            err_msg = "Insufficient numeric data after cleaning (less than 5 valid rows)."
-            print(f"[ERROR] {err_msg}")
-            return _json_error(err_msg)
+            return _json_error("Insufficient numeric data after cleaning (< 5 rows).")
 
-        # --- Pipeline Execution ---
-        print("[PROCESS] Running ML Engine pipeline...")
         result = run_pipeline(
             records=df.to_dict(orient="records"),
             feature_cols=feature_cols,
             target_col=target_col,
             models=data.get("models", ["lr", "dt", "nn"]),
-            config=data.get("config", {})
+            config=data.get("config", {}),
         )
 
-        # Store models for later predictions
-        trained_models = result.get("models", {})
-        
-        # Store feature columns for later use
-        session["feature_cols"] = feature_cols
-        session["target_col"] = target_col
+        # Persist model objects to /tmp for /api/predict
+        _save_models(result.get("model_objects", {}), feature_cols, target_col)
 
-        print("[SUCCESS] Training complete. Sending structured results...")
-        
+        print("[SUCCESS] Training complete.")
         response = {
-            "status": "success",
-            "models": result.get("models", {}),
-            "dataset_info": result.get("dataset_info", {})
+            "status":       "success",
+            "models":       result.get("models", {}),
+            "dataset_info": result.get("dataset_info", {}),
         }
-        
         return jsonify(convert_numpy(response))
 
     except Exception as e:
-        print("\n" + "="*60)
-        print("CRITICAL SERVER ERROR DETECTED")
-        print("="*60)
         traceback.print_exc()
-        print("="*60 + "\n")
-        
-        return _json_error(f"Internal Server Error: {str(e)}", 500)
+        return _json_error(f"Internal Server Error: {e}", 500)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ML API — /api/predict (single-row inference with trained models)
+# ML API — /api/predict
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/predict", methods=["POST"])
@@ -374,66 +353,49 @@ def predict_single():
     try:
         print("\n[SERVER] Received prediction request...")
         data = request.get_json()
-        
+
         if not data:
             return _json_error("Empty request payload.")
 
         feature_values = data.get("feature_values", [])
-        feature_names = data.get("feature_names", [])
-        models_to_use = data.get("models", list(trained_models.keys()))
-        
-        if not feature_values or len(feature_values) != len(feature_names):
+        feature_names  = data.get("feature_names", [])
+        models_to_use  = data.get("models", [])
+
+        if len(feature_values) != len(feature_names):
             return _json_error("Mismatch between feature values and feature names.")
 
-        print(f"[INFO] Prediction request for models: {models_to_use}")
-        print(f"[INFO] Feature values: {feature_values}")
+        # Load models from /tmp
+        stored = _load_models()
+        if not stored:
+            return _json_error(
+                "No trained models found. Please train first — models may have "
+                "expired between serverless invocations.", 404
+            )
 
-        # Prepare input data
-        X = np.array(feature_values).reshape(1, -1).astype(np.float32)
-        
-        # Make predictions with all available models
+        model_objects = stored["model_objects"]
+        X = np.array(feature_values, dtype=np.float32).reshape(1, -1)
+
         predictions = {}
-        
-        for model_key in models_to_use:
-            if model_key not in trained_models:
-                print(f"[WARN] Model {model_key} not found in trained models")
+        for key in (models_to_use or list(model_objects.keys())):
+            if key not in model_objects:
                 continue
-            
-            model_info = trained_models[model_key]
-            
-            if "error" in model_info:
-                print(f"[SKIP] Model {model_key} has error: {model_info['error']}")
-                continue
-            
             try:
-                # Get the model object (this depends on how ml_engine structures it)
-                # For now, we'll return a simple prediction based on the test predictions
-                # In a real scenario, you'd store the actual model objects
-                
-                # For demo purposes, use average of test predictions scaled
-                test_preds = model_info.get("predictions", [])
-                if test_preds:
-                    avg_pred = np.mean(test_preds)
-                    # Scale based on input relative to training data
-                    predictions[model_key] = float(avg_pred)
-                else:
-                    predictions[model_key] = 0.0
-                    
+                obj    = model_objects[key]
+                scaler = obj["scaler"]
+                model  = obj["model"]
+                X_scaled = scaler.transform(X)
+                pred     = model.predict(X_scaled)
+                predictions[key] = float(pred[0])
             except Exception as e:
-                print(f"[ERROR] Prediction failed for {model_key}: {str(e)}")
-                predictions[model_key] = None
+                print(f"[ERROR] {key}: {e}")
+                predictions[key] = None
 
-        print(f"[SUCCESS] Predictions generated: {predictions}")
-        
-        return jsonify({
-            "status": "success",
-            "predictions": predictions
-        })
+        print(f"[SUCCESS] Predictions: {predictions}")
+        return jsonify({"status": "success", "predictions": predictions})
 
     except Exception as e:
-        print(f"[ERROR] Prediction error: {str(e)}")
         traceback.print_exc()
-        return _json_error(f"Prediction failed: {str(e)}", 500)
+        return _json_error(f"Prediction failed: {e}", 500)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -447,6 +409,5 @@ def health():
 
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n🔮 SalesCast AI starting…")
-    print("   http://localhost:5000\n")
+    print("\n🔮 SalesCast AI starting…  http://localhost:5000\n")
     app.run(debug=True, port=5000)
