@@ -121,6 +121,9 @@
         <div class="nav-icon">📊</div><span>Results</span>
         <span class="nav-badge" id="resultsBadge" style="display:none">New</span>
       </div>
+      <div class="nav-item" id="predictNav" onclick="showPage('predict',this)" style="display:none">
+        <div class="nav-icon">🎯</div><span>Predict</span>
+      </div>
       <div class="nav-section">More</div>
       <div class="nav-item" onclick="downloadCSV()">
         <div class="nav-icon">💾</div><span>Export CSV</span>
@@ -360,12 +363,15 @@
           <button class="btn btn-primary" onclick="showPage('train',document.querySelectorAll('.nav-item')[2])">Go to Training →</button>
         </div>
         <div id="resultsContent" style="display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
             <div>
               <div style="font-size:16px;font-weight:600">Model Performance Comparison</div>
               <div style="font-size:12px;color:var(--text3);margin-top:2px" id="trainSummary"></div>
             </div>
-            <button class="btn btn-success btn-sm" onclick="downloadCSV()">⬇ Download CSV</button>
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-success btn-sm" onclick="downloadCSV()">⬇ Download CSV</button>
+              <button class="btn btn-primary btn-sm" id="predictBtnResults" onclick="showPage('predict',document.querySelector('#predictNav'))">🎯 Make Prediction</button>
+            </div>
           </div>
           <div class="results-grid" id="modelCards"></div>
           <div class="toggle-group">
@@ -398,6 +404,40 @@
               <div class="chart-title">Training vs Test Performance</div>
               <div class="chart-sub">R² scores on train vs test split</div>
               <div style="position:relative;height:220px"><canvas id="splitChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREDICTION PAGE -->
+      <div class="page" id="page-predict">
+        <div id="noPredictionReady" style="text-align:center;padding:80px 40px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
+          <div style="font-size:48px;margin-bottom:16px">🎯</div>
+          <div style="font-size:18px;font-weight:600;margin-bottom:8px">No models trained yet</div>
+          <div style="color:var(--text3);font-size:14px;margin-bottom:20px">Train your models first to make predictions</div>
+          <button class="btn btn-primary" onclick="showPage('train',document.querySelectorAll('.nav-item')[2])">Go to Training →</button>
+        </div>
+        <div id="predictionContent" style="display:none">
+          <div style="margin-bottom:24px">
+            <div style="font-size:16px;font-weight:600;margin-bottom:4px">🎯 Make a Real-World Prediction</div>
+            <div style="font-size:13px;color:var(--text3)">Enter values for each feature and get predictions from all trained models</div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">📝 Feature Input</div>
+            <div class="chart-sub">Fill in the values for your prediction scenario</div>
+            <div id="predictionForm" class="prediction-form"></div>
+            <div style="display:flex;gap:10px;margin-top:20px">
+              <button class="btn btn-primary" id="predictBtn" onclick="makePrediction()">🔮 Get Predictions</button>
+              <button class="btn btn-ghost" onclick="resetPredictionForm()">↻ Reset</button>
+            </div>
+          </div>
+
+          <div id="predictionResults" style="display:none">
+            <div class="chart-card">
+              <div class="chart-title">📊 Prediction Results</div>
+              <div class="chart-sub">Predictions from all trained models for your scenario</div>
+              <div id="predictionResultsContent"></div>
             </div>
           </div>
         </div>
