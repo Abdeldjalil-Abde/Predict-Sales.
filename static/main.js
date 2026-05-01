@@ -11,7 +11,7 @@ let state = {
   targetCol: "",
   featureCols: [],
   results: null,
-  selectedModels: new Set(["lr", "dt", "nn"]),
+  selectedModels: new Set(["lr", "dt", "ma"]),
 };
 
 // ── Navigation ─────────────────────────────────────────────

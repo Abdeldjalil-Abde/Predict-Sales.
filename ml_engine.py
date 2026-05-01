@@ -1,9 +1,7 @@
 """
 ml_engine.py — SalesCast AI  (Vercel-compatible)
 =================================================
-PyTorch has been replaced with sklearn.neural_network.MLPRegressor.
-This cuts the dependency footprint from ~750 MB to ~30 MB and keeps
-the function well inside Vercel's 250 MB compressed limit.
+Neural Network (MLP) replaced by Moving Average.
 """
 
 import numpy as np
@@ -12,12 +10,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 
 # ─────────────────────────────────────────────
-# Dataset preparation
+# Dataset preparation  (used by LR and DT)
 # ─────────────────────────────────────────────
 def prepare_dataset(records, feature_cols, target_col,
                     test_size=0.2, random_seed=42):
@@ -43,22 +40,22 @@ def prepare_dataset(records, feature_cols, target_col,
 
 
 # ─────────────────────────────────────────────
-# Shared metric helper
+# Shared metric helper  (for LR and DT)
 # ─────────────────────────────────────────────
 def _metrics(model, X_train, y_train, X_test, y_test):
     train_pred = model.predict(X_train)
     test_pred  = model.predict(X_test)
 
     return {
-        "train_pred":  train_pred,
-        "test_pred":   test_pred,
-        "train_r2":    float(r2_score(y_train, train_pred)),
-        "test_r2":     float(r2_score(y_test,  test_pred)),
-        "mae":         float(mean_absolute_error(y_test, test_pred)),
-        "rmse":        float(np.sqrt(mean_squared_error(y_test, test_pred))),
-        "accuracy":    float(100 * np.mean(
-                           np.abs(y_test - test_pred) <= 0.2 * np.abs(y_test)
-                       )),
+        "train_pred": train_pred,
+        "test_pred":  test_pred,
+        "train_r2":   float(r2_score(y_train, train_pred)),
+        "test_r2":    float(r2_score(y_test,  test_pred)),
+        "mae":        float(mean_absolute_error(y_test, test_pred)),
+        "rmse":       float(np.sqrt(mean_squared_error(y_test, test_pred))),
+        "accuracy":   float(100 * np.mean(
+                          np.abs(y_test - test_pred) <= 0.2 * np.abs(y_test)
+                      )),
     }
 
 
@@ -87,35 +84,88 @@ def train_decision_tree(X_train, y_train, X_test, y_test, max_depth=5):
 
 
 # ─────────────────────────────────────────────
-# Neural Network  (sklearn MLP — no PyTorch)
+# Moving Average
 # ─────────────────────────────────────────────
-def train_neural_network(X_train, y_train, X_test, y_test,
-                         epochs=200, hidden_units=64):
-    model = MLPRegressor(
-        hidden_layer_sizes=(hidden_units, hidden_units // 2),
-        activation="relu",
-        solver="adam",
-        max_iter=epochs,
-        random_state=42,
-        early_stopping=True,
-        validation_fraction=0.1,
-        n_iter_no_change=15,
+def train_moving_average(records, target_col, date_col=None,
+                         windows=None):
+    """
+    Temporal moving-average forecaster.
+
+    - Sorts records by date (if date_col supplied) or by row order.
+    - 80 / 20 temporal split (no shuffling).
+    - Tries each window in `windows`; keeps the one with lowest test MAE.
+    - Prediction for every test point = last MA value seen in training.
+    """
+    if windows is None:
+        windows = [4, 8, 13, 26, 52]
+
+    df = pd.DataFrame(records)
+
+    # ── Sort by date ──────────────────────────────────────────────────────
+    if date_col and date_col in df.columns:
+        df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+        df = df.sort_values(date_col).reset_index(drop=True)
+
+    sales      = df[target_col].values.astype(np.float64)
+    train_size = int(0.8 * len(sales))
+    train_s    = sales[:train_size]
+    test_s     = sales[train_size:]
+
+    # ── Find best window ─────────────────────────────────────────────────
+    best_window, best_mae, best_last_ma = None, float("inf"), None
+
+    for w in windows:
+        if w >= train_size:
+            continue
+        ma_series = pd.Series(train_s).rolling(window=w).mean()
+        last_ma   = float(ma_series.iloc[-1])
+        if np.isnan(last_ma):
+            continue
+        preds = np.full(len(test_s), last_ma)
+        mae   = float(mean_absolute_error(test_s, preds))
+        if mae < best_mae:
+            best_mae, best_window, best_last_ma = mae, w, last_ma
+
+    # Fallback if no window worked
+    if best_window is None:
+        best_window  = windows[0]
+        best_last_ma = float(np.mean(train_s))
+
+    # ── Build predictions ─────────────────────────────────────────────────
+    # Train: rolling MA with min_periods=1 so no leading NaN
+    train_pred = (
+        pd.Series(train_s)
+        .rolling(window=best_window, min_periods=1)
+        .mean()
+        .values
     )
-    model.fit(X_train, y_train)
-    m = _metrics(model, X_train, y_train, X_test, y_test)
+    test_pred = np.full(len(test_s), best_last_ma)
 
-    # Approximate feature importance via column-zeroing
-    baseline_mse = mean_squared_error(y_test, m["test_pred"])
-    importance   = []
-    for i in range(X_test.shape[1]):
-        X_tmp       = X_test.copy()
-        X_tmp[:, i] = 0
-        imp = max(0.0, float(mean_squared_error(y_test, model.predict(X_tmp)) - baseline_mse))
-        importance.append(imp)
+    # ── Metrics ───────────────────────────────────────────────────────────
+    train_r2 = float(r2_score(train_s, train_pred))
+    test_r2  = float(r2_score(test_s,  test_pred))
+    mae_val  = float(mean_absolute_error(test_s,  test_pred))
+    rmse_val = float(np.sqrt(mean_squared_error(test_s, test_pred)))
+    accuracy = float(100 * np.mean(
+        np.abs(test_s - test_pred) <= 0.2 * np.abs(test_s)
+    ))
 
-    m["model"]              = model
-    m["feature_importance"] = importance
-    return m
+    return {
+        "train_pred":        train_pred,
+        "test_pred":         test_pred,
+        "y_train":           train_s,
+        "y_test":            test_s,
+        "train_r2":          train_r2,
+        "test_r2":           test_r2,
+        "mae":               mae_val,
+        "rmse":              rmse_val,
+        "accuracy":          accuracy,
+        "best_window":       best_window,
+        "last_ma":           best_last_ma,
+        # One "feature": the chosen window — used for the importance chart
+        "feature_importance": [float(best_window)],
+        "feature_names":      [f"MA window = {best_window}"],
+    }
 
 
 # ─────────────────────────────────────────────
@@ -124,20 +174,24 @@ def train_neural_network(X_train, y_train, X_test, y_test,
 def run_pipeline(records, feature_cols, target_col,
                  models=None, config=None):
     if models is None:
-        models = ["lr", "dt", "nn"]
+        models = ["lr", "dt", "ma"]
     if config is None:
         config = {}
 
-    ds = prepare_dataset(
-        records, feature_cols, target_col,
-        test_size=config.get("test_split",  0.2),
-        random_seed=config.get("random_seed", 42),
-    )
+    results       = {}
+    model_objects = {}
 
-    results = {}
-    model_objects = {}   # kept separate — not JSON-serialisable
+    # ── Prepare dataset for LR / DT  ─────────────────────────────────────
+    needs_ds = any(k in models for k in ("lr", "dt"))
+    ds = None
+    if needs_ds:
+        ds = prepare_dataset(
+            records, feature_cols, target_col,
+            test_size=config.get("test_split",   0.2),
+            random_seed=config.get("random_seed", 42),
+        )
 
-    # ── Linear Regression ────────────────────
+    # ── Linear Regression ─────────────────────────────────────────────────
     if "lr" in models:
         try:
             lr = train_linear_regression(
@@ -160,7 +214,7 @@ def run_pipeline(records, feature_cols, target_col,
         except Exception as e:
             results["lr"] = {"error": f"Linear Regression failed: {e}"}
 
-    # ── Decision Tree ─────────────────────────
+    # ── Decision Tree ──────────────────────────────────────────────────────
     if "dt" in models:
         try:
             dt = train_decision_tree(
@@ -184,37 +238,52 @@ def run_pipeline(records, feature_cols, target_col,
         except Exception as e:
             results["dt"] = {"error": f"Decision Tree failed: {e}"}
 
-    # ── Neural Network (MLP) ──────────────────
-    if "nn" in models:
+    # ── Moving Average ─────────────────────────────────────────────────────
+    if "ma" in models:
         try:
-            nn = train_neural_network(
-                ds["X_train"], ds["y_train"],
-                ds["X_test"],  ds["y_test"],
-                epochs=config.get("nn_epochs", 200),
-                hidden_units=config.get("nn_hidden_units", 64),
+            date_col = config.get("date_col")          # optional
+            windows  = config.get("ma_windows", [4, 8, 13, 26, 52])
+
+            ma = train_moving_average(
+                records, target_col,
+                date_col=date_col,
+                windows=windows,
             )
-            model_objects["nn"] = {"model": nn["model"], "scaler": ds["scaler"]}
-            results["nn"] = {
-                "name":  "Neural Network (MLP)",
-                "icon":  "🧠",
+            # Store just enough to predict later (last_ma is the predictor)
+            model_objects["ma"] = {"last_ma": ma["last_ma"]}
+
+            results["ma"] = {
+                "name":  f"Moving Average (w={ma['best_window']})",
+                "icon":  "📉",
                 "color": "#7c5cfc",
-                "train": {"r2": nn["train_r2"]},
-                "test":  {"r2": nn["test_r2"], "mae": nn["mae"],
-                          "rmse": nn["rmse"], "acc": nn["accuracy"]},
-                "predictions":        nn["test_pred"].tolist(),
-                "actuals":            ds["y_test"].tolist(),
-                "feature_importance": nn["feature_importance"],
-                "feature_names":      feature_cols,
+                "train": {"r2": ma["train_r2"]},
+                "test":  {"r2": ma["test_r2"], "mae": ma["mae"],
+                          "rmse": ma["rmse"],  "acc": ma["accuracy"]},
+                "predictions":        ma["test_pred"].tolist(),
+                "actuals":            ma["y_test"].tolist(),
+                "feature_importance": ma["feature_importance"],
+                "feature_names":      ma["feature_names"],
+                "best_window":        ma["best_window"],
             }
         except Exception as e:
-            results["nn"] = {"error": f"Neural Network failed: {e}"}
+            results["ma"] = {"error": f"Moving Average failed: {e}"}
+
+    # Derive dataset_info (use MA counts if LR/DT weren't run)
+    if ds:
+        n_train = len(ds["y_train"])
+        n_test  = len(ds["y_test"])
+    elif "ma" in results and not results["ma"].get("error"):
+        n_test  = len(results["ma"]["actuals"])
+        n_train = len(records) - n_test
+    else:
+        n_train = n_test = 0
 
     return {
-        "models":       results,
-        "model_objects": model_objects,    # passed back to app.py for /tmp storage
+        "models":        results,
+        "model_objects": model_objects,
         "dataset_info": {
-            "n_samples_total": len(ds["y_train"]) + len(ds["y_test"]),
-            "n_train":         len(ds["y_train"]),
-            "n_test":          len(ds["y_test"]),
+            "n_samples_total": n_train + n_test,
+            "n_train":         n_train,
+            "n_test":          n_test,
         },
     }

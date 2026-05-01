@@ -381,6 +381,10 @@ def predict_single():
                 continue
             try:
                 obj    = model_objects[key]
+                if "last_ma" in obj:
+                    predictions[key] = float(obj["last_ma"])
+                    continue
+
                 scaler = obj["scaler"]
                 model  = obj["model"]
                 X_scaled = scaler.transform(X)

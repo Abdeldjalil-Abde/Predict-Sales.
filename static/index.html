@@ -1,451 +1,925 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>SalesCast AI</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<link rel="stylesheet" href="./static/style.css">
-</head>
-<body>
-
-<!-- ══════════════ LOGIN PAGE ══════════════ -->
-<div id="loginPage">
-
-  <!-- LEFT: Branding + Neural Canvas -->
-  <div class="login-left">
-    <canvas id="neuralCanvas"></canvas>
-    <div class="login-left-content">
-      <div class="login-brand-wrap">
-        <div class="login-brand-icon">🔮</div>
-        <div class="login-brand">Predict Sales</div>
-      </div>
-      <div class="login-tagline">Smart Data Analysis &amp; Prediction Platform</div>
-      <div class="login-desc">Upload your data in any format, and let the platform handle preprocessing, training and comparison between models — automatically.</div>
-      <div class="login-stats">
-        <div class="login-stat">
-          <div class="login-stat-val accent">80/20</div>
-          <div class="login-stat-lbl">Train / Test Split</div>
-        </div>
-        <div class="login-stat-sep"></div>
-        <div class="login-stat">
-          <div class="login-stat-val green">∞</div>
-          <div class="login-stat-lbl">Data Types</div>
-        </div>
-        <div class="login-stat-sep"></div>
-        <div class="login-stat">
-          <div class="login-stat-val purple">3</div>
-          <div class="login-stat-lbl">ML Models</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- RIGHT: Login Form -->
-  <div class="login-right">
-    <div class="login-form-wrap">
-      <div class="login-logo">
-        <div class="login-logo-icon">🔮</div>
-        <div class="login-title">Welcome Back</div>
-        <div class="login-sub">Sign in to access the Analytics Platform</div>
-      </div>
-      <div class="login-error" id="loginError">Invalid credentials. Try username: <b>demo</b> / password: <b>demo123</b></div>
-      <div class="form-group">
-        <label class="form-label">Username</label>
-        <div class="form-input-wrap">
-          <span class="form-input-icon">👤</span>
-          <input class="form-input" id="usernameInput" type="text" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <div class="form-input-wrap">
-          <span class="form-input-icon">🔒</span>
-          <input class="form-input" id="passwordInput" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
-          <button class="form-input-toggle" onclick="togglePwd(this)" tabindex="-1">👁</button>
-        </div>
-      </div>
-      <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
-      <div class="login-hint">Demo account — username: <span onclick="prefill()">demo</span> / password: <span onclick="prefill()">demo123</span></div>
-
-      <div class="social-divider">
-        <span class="social-divider-line"></span>
-        <span class="social-divider-text">or continue with</span>
-        <span class="social-divider-line"></span>
-      </div>
-
-      <div class="social-btns">
-        <button class="social-btn" onclick="socialLogin('Google')">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-          <span>Google</span>
-        </button>
-        <button class="social-btn" onclick="socialLogin('GitHub')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          <span>GitHub</span>
-        </button>
-        <button class="social-btn" onclick="socialLogin('Microsoft')">
-          <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
-          <span>Microsoft</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-</div>
-<!-- ══════════════ END LOGIN ══════════════ -->
-
-<div class="app" id="mainApp" style="display:none">
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-mark">
-        <div class="logo-icon">🔮</div>
-        <div>
-          <div class="logo-text">SalesCast</div>
-          <div class="logo-sub">AI Platform</div>
-        </div>
-      </div>
-    </div>
-    <nav class="nav">
-      <div class="nav-section">Navigate</div>
-      <div class="nav-item active" onclick="showPage('home',this)">
-        <div class="nav-icon">🏠</div><span>Home</span>
-      </div>
-      <div class="nav-item" onclick="showPage('upload',this)">
-        <div class="nav-icon">📤</div><span>Upload Data</span>
-      </div>
-      <div class="nav-item" onclick="showPage('train',this)">
-        <div class="nav-icon">⚙️</div><span>Train Models</span>
-      </div>
-      <div class="nav-item" id="resultsNav" onclick="showPage('results',this)">
-        <div class="nav-icon">📊</div><span>Results</span>
-        <span class="nav-badge" id="resultsBadge" style="display:none">New</span>
-      </div>
-      <div class="nav-item" id="predictNav" onclick="showPage('predict',this)" style="display:none">
-        <div class="nav-icon">🎯</div><span>Predict</span>
-      </div>
-      <div class="nav-section">More</div>
-      <div class="nav-item" onclick="downloadCSV()">
-        <div class="nav-icon">💾</div><span>Export CSV</span>
-      </div>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="status-row">
-        <div class="status-dot"></div>
-        <span>Engine Online</span>
-      </div>
-    </div>
-  </aside>
-
-  <div class="main">
-    <div class="topbar">
-      <div>
-        <div class="page-title" id="pageTitle">Dashboard Overview</div>
-        <div class="page-sub" id="pageSub">SALESCAST AI · ML PREDICTION PLATFORM</div>
-      </div>
-      <div class="topbar-actions">
-        <button class="btn btn-ghost btn-sm" onclick="showPage('upload',document.querySelectorAll('.nav-item')[1])">+ Upload Data</button>
-        <button class="btn btn-primary btn-sm" onclick="showPage('train',document.querySelectorAll('.nav-item')[2])">Train Models</button>
-        <div class="topbar-divider"></div>
-        <div class="user-pill">
-          <div class="user-avatar" id="topbarAvatar">D</div>
-          <div class="user-info">
-            <div class="user-name" id="topbarName">Demo User</div>
-            <div class="user-role">Data Analyst</div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>SalesCast AI</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="./static/style.css" />
+  </head>
+  <body>
+    <!-- ══════════════ LOGIN PAGE ══════════════ -->
+    <div id="loginPage">
+      <!-- LEFT: Branding + Neural Canvas -->
+      <div class="login-left">
+        <canvas id="neuralCanvas"></canvas>
+        <div class="login-left-content">
+          <div class="login-brand-wrap">
+            <div class="login-brand-icon">🔮</div>
+            <div class="login-brand">Predict Sales</div>
           </div>
-          <span class="user-chevron">▾</span>
-          <div class="user-dropdown">
-            <div class="dropdown-header">
-              <div class="dropdown-avatar" id="dropdownAvatar">D</div>
-              <div>
-                <div class="dropdown-name" id="dropdownName">Demo User</div>
-                <div class="dropdown-email" id="dropdownEmail">demo@salescast.ai</div>
-              </div>
+          <div class="login-tagline">
+            Smart Data Analysis &amp; Prediction Platform
+          </div>
+          <div class="login-desc">
+            Upload your data in any format, and let the platform handle
+            preprocessing, training and comparison between models —
+            automatically.
+          </div>
+          <div class="login-stats">
+            <div class="login-stat">
+              <div class="login-stat-val accent">80/20</div>
+              <div class="login-stat-lbl">Train / Test Split</div>
             </div>
-            <div class="dropdown-item"><span class="dropdown-item-icon">👤</span>My Profile</div>
-            <div class="dropdown-item"><span class="dropdown-item-icon">⚙️</span>Preferences</div>
-            <div class="dropdown-item"><span class="dropdown-item-icon">📊</span>My Reports</div>
-            <div class="dropdown-sep"></div>
-            <div class="dropdown-item danger" onclick="logOut()"><span class="dropdown-item-icon">🚪</span>Sign Out</div>
+            <div class="login-stat-sep"></div>
+            <div class="login-stat">
+              <div class="login-stat-val green">∞</div>
+              <div class="login-stat-lbl">Data Types</div>
+            </div>
+            <div class="login-stat-sep"></div>
+            <div class="login-stat">
+              <div class="login-stat-val purple">3</div>
+              <div class="login-stat-lbl">ML Models</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Login Form -->
+      <div class="login-right">
+        <div class="login-form-wrap">
+          <div class="login-logo">
+            <div class="login-logo-icon">🔮</div>
+            <div class="login-title">Welcome Back</div>
+            <div class="login-sub">
+              Sign in to access the Analytics Platform
+            </div>
+          </div>
+          <div class="login-error" id="loginError">
+            Invalid credentials. Try username: <b>demo</b> / password:
+            <b>demo123</b>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">👤</span>
+              <input
+                class="form-input"
+                id="usernameInput"
+                type="text"
+                placeholder="Enter your username"
+                autocomplete="username"
+                onkeydown="if (event.key === 'Enter') doLogin();"
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">🔒</span>
+              <input
+                class="form-input"
+                id="passwordInput"
+                type="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                onkeydown="if (event.key === 'Enter') doLogin();"
+              />
+              <button
+                class="form-input-toggle"
+                onclick="togglePwd(this)"
+                tabindex="-1"
+              >
+                👁
+              </button>
+            </div>
+          </div>
+          <button class="login-btn" id="loginBtn" onclick="doLogin()">
+            Sign In
+          </button>
+          <div class="login-hint">
+            Demo account — username: <span onclick="prefill()">demo</span> /
+            password: <span onclick="prefill()">demo123</span>
+          </div>
+
+          <div class="social-divider">
+            <span class="social-divider-line"></span>
+            <span class="social-divider-text">or continue with</span>
+            <span class="social-divider-line"></span>
+          </div>
+
+          <div class="social-btns">
+            <button class="social-btn" onclick="socialLogin('Google')">
+              <svg width="18" height="18" viewBox="0 0 48 48">
+                <path
+                  fill="#EA4335"
+                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                />
+                <path fill="none" d="M0 0h48v48H0z" />
+              </svg>
+              <span>Google</span>
+            </button>
+            <button class="social-btn" onclick="socialLogin('GitHub')">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
+                />
+              </svg>
+              <span>GitHub</span>
+            </button>
+            <button class="social-btn" onclick="socialLogin('Microsoft')">
+              <svg width="18" height="18" viewBox="0 0 21 21">
+                <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+              </svg>
+              <span>Microsoft</span>
+            </button>
           </div>
         </div>
       </div>
     </div>
+    <!-- ══════════════ END LOGIN ══════════════ -->
 
-    <div class="content">
-
-      <!-- HOME PAGE -->
-      <div class="page active" id="page-home">
-        <div class="hero">
-          <div class="hero-label">Next-Gen ML Platform</div>
-          <div class="hero-title">Predict Sales with<br><span>Precision AI</span></div>
-          <div class="hero-sub">Upload your historical data, train 3 ML models, and get accurate sales forecasts with detailed performance analytics.</div>
-          <div class="hero-actions">
-            <button class="btn btn-primary" onclick="showPage('upload',document.querySelectorAll('.nav-item')[1])">🚀 Get Started</button>
-            <button class="btn btn-ghost" onclick="loadSampleData()">📊 Use Sample Data</button>
-          </div>
-        </div>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Models Available <span class="stat-icon">🤖</span></div>
-            <div class="stat-value" style="background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">3</div>
-            <div class="stat-change">Linear · Tree · Neural</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Algorithms <span class="stat-icon">⚗️</span></div>
-            <div class="stat-value" style="color:var(--accent2)">ML</div>
-            <div class="stat-change">scikit-learn powered</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Metrics Tracked <span class="stat-icon">📐</span></div>
-            <div class="stat-value" style="color:var(--accent3)">4</div>
-            <div class="stat-change">MAE · RMSE · R² · Accuracy</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Export Formats <span class="stat-icon">💾</span></div>
-            <div class="stat-value" style="color:var(--accent4)">CSV</div>
-            <div class="stat-change">Full predictions export</div>
-          </div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-title">Platform Workflow</div>
-          <div class="chart-sub">How SalesCast AI works in 4 steps</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px">
-            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:32px;margin-bottom:10px">📤</div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:6px">1. Upload</div>
-              <div style="font-size:12px;color:var(--text3)">Upload CSV or Excel with historical sales</div>
-            </div>
-            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:32px;margin-bottom:10px">⚙️</div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:6px">2. Preprocess</div>
-              <div style="font-size:12px;color:var(--text3)">Auto clean, encode and split data</div>
-            </div>
-            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:32px;margin-bottom:10px">🧠</div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:6px">3. Train</div>
-              <div style="font-size:12px;color:var(--text3)">Train 3 ML models simultaneously</div>
-            </div>
-            <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-              <div style="font-size:32px;margin-bottom:10px">📊</div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:6px">4. Results</div>
-              <div style="font-size:12px;color:var(--text3)">Compare models and export predictions</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- UPLOAD PAGE -->
-      <div class="page" id="page-upload">
-        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="e=>{e.preventDefault();this.classList.add('dragover')}" ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
-          <span class="upload-icon">📂</span>
-          <div class="upload-title">Drop your dataset here</div>
-          <div class="upload-sub">or click to browse files from your computer</div>
-          <div class="upload-formats">
-            <span class="format-badge">.CSV</span>
-            <span class="format-badge">.XLSX</span>
-            <span class="format-badge">.XLS</span>
-            <span class="format-badge">Max 50MB</span>
-          </div>
-          <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(event)">
-        </div>
-
-        <div id="dataInfo" style="display:none">
-          <div class="col-selector" style="margin-top:20px">
-            <div class="col-selector-title">📋 Dataset Configuration</div>
-            <div id="dataStats" style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap"></div>
-            <div class="col-grid">
-              <div class="field-group">
-                <div class="field-label">🎯 Target Column (Sales)</div>
-                <select id="targetCol" onchange="updateConfig()"><option value="">Select target column...</option></select>
-              </div>
-              <div class="field-group">
-                <div class="field-label">📅 Date Column (Optional)</div>
-                <select id="dateCol"><option value="">None</option></select>
-              </div>
-              <div class="field-group" style="grid-column:1/-1">
-                <div class="field-label">📊 Feature Columns (Hold Ctrl/Cmd for multiple)</div>
-                <select id="featureCols" multiple style="height:100px"></select>
-              </div>
-            </div>
-            <div style="margin-top:16px;display:flex;gap:10px">
-              <button class="btn btn-primary" onclick="confirmUpload()">✅ Confirm & Continue</button>
-              <button class="btn btn-ghost" onclick="loadSampleData()">📊 Use Sample Data Instead</button>
-            </div>
-          </div>
-          <div class="preview-card">
-            <div class="preview-header">
-              <div class="preview-title">📄 Data Preview</div>
-              <div id="rowCount" style="font-size:12px;color:var(--text3)"></div>
-            </div>
-            <div class="table-wrap"><table id="previewTable"></table></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TRAIN PAGE -->
-      <div class="page" id="page-train">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px" id="dataStatus">
-          <div style="font-size:13px;color:var(--text3)" id="trainDataStatus">⚠️ No dataset loaded. <span style="color:var(--accent);cursor:pointer" onclick="showPage('upload',document.querySelectorAll('.nav-item')[1])">Upload data first →</span></div>
-        </div>
-        <div class="models-grid">
-          <div class="model-card selected" onclick="toggleModel(this,'lr')" data-model="lr">
-            <div class="model-icon">📈</div>
-            <div class="model-name">Linear Regression</div>
-            <div class="model-desc">Finds the best-fit line through your data. Fast, interpretable, great for linear trends.</div>
-            <span class="model-tag tag-fast">⚡ Fast</span>
-          </div>
-          <div class="model-card selected" onclick="toggleModel(this,'dt')" data-model="dt">
-            <div class="model-icon">🌳</div>
-            <div class="model-name">Decision Tree</div>
-            <div class="model-desc">Learns if-then rules from data. Handles non-linear patterns and feature interactions.</div>
-            <span class="model-tag tag-med">⚖️ Balanced</span>
-          </div>
-          <div class="model-card selected" onclick="toggleModel(this,'nn')" data-model="nn">
-            <div class="model-icon">🧠</div>
-            <div class="model-name">Neural Network (MLP)</div>
-            <div class="model-desc">Multi-layer perceptron with hidden layers. Most powerful for complex non-linear patterns.</div>
-            <span class="model-tag tag-deep">🔬 Deep</span>
-          </div>
-        </div>
-
-        <div class="chart-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div class="app" id="mainApp" style="display: none">
+      <aside class="sidebar">
+        <div class="logo">
+          <div class="logo-mark">
+            <div class="logo-icon">🔮</div>
             <div>
-              <div class="chart-title">⚙️ Training Configuration</div>
-              <div class="chart-sub" style="margin-bottom:0">Adjust hyperparameters before training</div>
+              <div class="logo-text">SalesCast</div>
+              <div class="logo-sub">AI Platform</div>
             </div>
-            <button class="btn btn-primary" id="trainBtn" onclick="startTraining()" disabled>🚀 Train All Models</button>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-            <div class="field-group">
-              <div class="field-label">Test Split %</div>
-              <select id="testSplit">
-                <option value="0.1">10% Test</option>
-                <option value="0.2" selected>20% Test</option>
-                <option value="0.3">30% Test</option>
-              </select>
+        </div>
+        <nav class="nav">
+          <div class="nav-section">Navigate</div>
+          <div class="nav-item active" onclick="showPage('home', this)">
+            <div class="nav-icon">🏠</div>
+            <span>Home</span>
+          </div>
+          <div class="nav-item" onclick="showPage('upload', this)">
+            <div class="nav-icon">📤</div>
+            <span>Upload Data</span>
+          </div>
+          <div class="nav-item" onclick="showPage('train', this)">
+            <div class="nav-icon">⚙️</div>
+            <span>Train Models</span>
+          </div>
+          <div
+            class="nav-item"
+            id="resultsNav"
+            onclick="showPage('results', this)"
+          >
+            <div class="nav-icon">📊</div>
+            <span>Results</span>
+            <span class="nav-badge" id="resultsBadge" style="display: none"
+              >New</span
+            >
+          </div>
+          <div
+            class="nav-item"
+            id="predictNav"
+            onclick="showPage('predict', this)"
+            style="display: none"
+          >
+            <div class="nav-icon">🎯</div>
+            <span>Predict</span>
+          </div>
+          <div class="nav-section">More</div>
+          <div class="nav-item" onclick="downloadCSV()">
+            <div class="nav-icon">💾</div>
+            <span>Export CSV</span>
+          </div>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="status-row">
+            <div class="status-dot"></div>
+            <span>Engine Online</span>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main">
+        <div class="topbar">
+          <div>
+            <div class="page-title" id="pageTitle">Dashboard Overview</div>
+            <div class="page-sub" id="pageSub">
+              SALESCAST AI · ML PREDICTION PLATFORM
             </div>
-            <div class="field-group">
-              <div class="field-label">Random Seed</div>
-              <select id="randomSeed">
-                <option value="42">42 (Classic)</option>
-                <option value="0">0</option>
-                <option value="123">123</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <div class="field-label">Tree Max Depth</div>
-              <select id="treeDepth">
-                <option value="3">3 (Simple)</option>
-                <option value="5" selected>5 (Medium)</option>
-                <option value="10">10 (Complex)</option>
-              </select>
+          </div>
+          <div class="topbar-actions">
+            <button
+              class="btn btn-ghost btn-sm"
+              onclick="
+                showPage('upload', document.querySelectorAll('.nav-item')[1])
+              "
+            >
+              + Upload Data
+            </button>
+            <button
+              class="btn btn-primary btn-sm"
+              onclick="
+                showPage('train', document.querySelectorAll('.nav-item')[2])
+              "
+            >
+              Train Models
+            </button>
+            <div class="topbar-divider"></div>
+            <div class="user-pill">
+              <div class="user-avatar" id="topbarAvatar">D</div>
+              <div class="user-info">
+                <div class="user-name" id="topbarName">Demo User</div>
+                <div class="user-role">Data Analyst</div>
+              </div>
+              <span class="user-chevron">▾</span>
+              <div class="user-dropdown">
+                <div class="dropdown-header">
+                  <div class="dropdown-avatar" id="dropdownAvatar">D</div>
+                  <div>
+                    <div class="dropdown-name" id="dropdownName">Demo User</div>
+                    <div class="dropdown-email" id="dropdownEmail">
+                      demo@salescast.ai
+                    </div>
+                  </div>
+                </div>
+                <div class="dropdown-item">
+                  <span class="dropdown-item-icon">👤</span>My Profile
+                </div>
+                <div class="dropdown-item">
+                  <span class="dropdown-item-icon">⚙️</span>Preferences
+                </div>
+                <div class="dropdown-item">
+                  <span class="dropdown-item-icon">📊</span>My Reports
+                </div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item danger" onclick="logOut()">
+                  <span class="dropdown-item-icon">🚪</span>Sign Out
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div id="trainingProgress" style="display:none">
-          <div class="chart-card">
-            <div class="chart-title">🔄 Training Progress</div>
-            <div id="progressContent"></div>
-            <div class="train-log" id="trainLog"></div>
+        <div class="content">
+          <!-- HOME PAGE -->
+          <div class="page active" id="page-home">
+            <div class="hero">
+              <div class="hero-label">Next-Gen ML Platform</div>
+              <div class="hero-title">
+                Predict Sales with<br /><span>Precision AI</span>
+              </div>
+              <div class="hero-sub">
+                Upload your historical data, train 3 ML models, and get accurate
+                sales forecasts with detailed performance analytics.
+              </div>
+              <div class="hero-actions">
+                <button
+                  class="btn btn-primary"
+                  onclick="
+                    showPage(
+                      'upload',
+                      document.querySelectorAll('.nav-item')[1],
+                    )
+                  "
+                >
+                  🚀 Get Started
+                </button>
+                <button class="btn btn-ghost" onclick="loadSampleData()">
+                  📊 Use Sample Data
+                </button>
+              </div>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-label">
+                  Models Available <span class="stat-icon">🤖</span>
+                </div>
+                <div
+                  class="stat-value"
+                  style="
+                    background: var(--gradient);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                  "
+                >
+                  3
+                </div>
+                <div class="stat-change">Linear · Tree · Moving Avg</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">
+                  Algorithms <span class="stat-icon">⚗️</span>
+                </div>
+                <div class="stat-value" style="color: var(--accent2)">ML</div>
+                <div class="stat-change">scikit-learn powered</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">
+                  Metrics Tracked <span class="stat-icon">📐</span>
+                </div>
+                <div class="stat-value" style="color: var(--accent3)">4</div>
+                <div class="stat-change">MAE · RMSE · R² · Accuracy</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">
+                  Export Formats <span class="stat-icon">💾</span>
+                </div>
+                <div class="stat-value" style="color: var(--accent4)">CSV</div>
+                <div class="stat-change">Full predictions export</div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">Platform Workflow</div>
+              <div class="chart-sub">How SalesCast AI works in 4 steps</div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(4, 1fr);
+                  gap: 12px;
+                  margin-top: 8px;
+                "
+              >
+                <div
+                  style="
+                    text-align: center;
+                    padding: 20px;
+                    background: var(--surface2);
+                    border-radius: 10px;
+                    border: 1px solid var(--border);
+                  "
+                >
+                  <div style="font-size: 32px; margin-bottom: 10px">📤</div>
+                  <div
+                    style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      margin-bottom: 6px;
+                    "
+                  >
+                    1. Upload
+                  </div>
+                  <div style="font-size: 12px; color: var(--text3)">
+                    Upload CSV or Excel with historical sales
+                  </div>
+                </div>
+                <div
+                  style="
+                    text-align: center;
+                    padding: 20px;
+                    background: var(--surface2);
+                    border-radius: 10px;
+                    border: 1px solid var(--border);
+                  "
+                >
+                  <div style="font-size: 32px; margin-bottom: 10px">⚙️</div>
+                  <div
+                    style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      margin-bottom: 6px;
+                    "
+                  >
+                    2. Preprocess
+                  </div>
+                  <div style="font-size: 12px; color: var(--text3)">
+                    Auto clean, encode and split data
+                  </div>
+                </div>
+                <div
+                  style="
+                    text-align: center;
+                    padding: 20px;
+                    background: var(--surface2);
+                    border-radius: 10px;
+                    border: 1px solid var(--border);
+                  "
+                >
+                  <div style="font-size: 32px; margin-bottom: 10px">🧠</div>
+                  <div
+                    style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      margin-bottom: 6px;
+                    "
+                  >
+                    3. Train
+                  </div>
+                  <div style="font-size: 12px; color: var(--text3)">
+                    Train 3 ML models simultaneously
+                  </div>
+                </div>
+                <div
+                  style="
+                    text-align: center;
+                    padding: 20px;
+                    background: var(--surface2);
+                    border-radius: 10px;
+                    border: 1px solid var(--border);
+                  "
+                >
+                  <div style="font-size: 32px; margin-bottom: 10px">📊</div>
+                  <div
+                    style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      margin-bottom: 6px;
+                    "
+                  >
+                    4. Results
+                  </div>
+                  <div style="font-size: 12px; color: var(--text3)">
+                    Compare models and export predictions
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- UPLOAD PAGE -->
+          <div class="page" id="page-upload">
+            <div
+              class="upload-zone"
+              id="uploadZone"
+              onclick="document.getElementById('fileInput').click()"
+              ondragover="
+                (e) => {
+                  e.preventDefault();
+                  this.classList.add('dragover');
+                }
+              "
+              ondragleave="this.classList.remove('dragover')"
+              ondrop="handleDrop(event)"
+            >
+              <span class="upload-icon">📂</span>
+              <div class="upload-title">Drop your dataset here</div>
+              <div class="upload-sub">
+                or click to browse files from your computer
+              </div>
+              <div class="upload-formats">
+                <span class="format-badge">.CSV</span>
+                <span class="format-badge">.XLSX</span>
+                <span class="format-badge">.XLS</span>
+                <span class="format-badge">Max 50MB</span>
+              </div>
+              <input
+                type="file"
+                id="fileInput"
+                accept=".csv,.xlsx,.xls"
+                onchange="handleFile(event)"
+              />
+            </div>
+
+            <div id="dataInfo" style="display: none">
+              <div class="col-selector" style="margin-top: 20px">
+                <div class="col-selector-title">📋 Dataset Configuration</div>
+                <div
+                  id="dataStats"
+                  style="
+                    display: flex;
+                    gap: 16px;
+                    margin-bottom: 20px;
+                    flex-wrap: wrap;
+                  "
+                ></div>
+                <div class="col-grid">
+                  <div class="field-group">
+                    <div class="field-label">🎯 Target Column (Sales)</div>
+                    <select id="targetCol" onchange="updateConfig()">
+                      <option value="">Select target column...</option>
+                    </select>
+                  </div>
+                  <div class="field-group">
+                    <div class="field-label">📅 Date Column (Optional)</div>
+                    <select id="dateCol">
+                      <option value="">None</option>
+                    </select>
+                  </div>
+                  <div class="field-group" style="grid-column: 1/-1">
+                    <div class="field-label">
+                      📊 Feature Columns (Hold Ctrl/Cmd for multiple)
+                    </div>
+                    <select
+                      id="featureCols"
+                      multiple
+                      style="height: 100px"
+                    ></select>
+                  </div>
+                </div>
+                <div style="margin-top: 16px; display: flex; gap: 10px">
+                  <button class="btn btn-primary" onclick="confirmUpload()">
+                    ✅ Confirm & Continue
+                  </button>
+                  <button class="btn btn-ghost" onclick="loadSampleData()">
+                    📊 Use Sample Data Instead
+                  </button>
+                </div>
+              </div>
+              <div class="preview-card">
+                <div class="preview-header">
+                  <div class="preview-title">📄 Data Preview</div>
+                  <div
+                    id="rowCount"
+                    style="font-size: 12px; color: var(--text3)"
+                  ></div>
+                </div>
+                <div class="table-wrap"><table id="previewTable"></table></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TRAIN PAGE -->
+          <div class="page" id="page-train">
+            <div
+              style="
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+              "
+              id="dataStatus"
+            >
+              <div
+                style="font-size: 13px; color: var(--text3)"
+                id="trainDataStatus"
+              >
+                ⚠️ No dataset loaded.
+                <span
+                  style="color: var(--accent); cursor: pointer"
+                  onclick="
+                    showPage(
+                      'upload',
+                      document.querySelectorAll('.nav-item')[1],
+                    )
+                  "
+                  >Upload data first →</span
+                >
+              </div>
+            </div>
+            <div class="models-grid">
+              <div
+                class="model-card selected"
+                onclick="toggleModel(this, 'lr')"
+                data-model="lr"
+              >
+                <div class="model-icon">📈</div>
+                <div class="model-name">Linear Regression</div>
+                <div class="model-desc">
+                  Finds the best-fit line through your data. Fast,
+                  interpretable, great for linear trends.
+                </div>
+                <span class="model-tag tag-fast">⚡ Fast</span>
+              </div>
+              <div
+                class="model-card selected"
+                onclick="toggleModel(this, 'dt')"
+                data-model="dt"
+              >
+                <div class="model-icon">🌳</div>
+                <div class="model-name">Decision Tree</div>
+                <div class="model-desc">
+                  Learns if-then rules from data. Handles non-linear patterns
+                  and feature interactions.
+                </div>
+                <span class="model-tag tag-med">⚖️ Balanced</span>
+              </div>
+              <div
+                class="model-card selected"
+                onclick="toggleModel(this, 'ma')"
+                data-model="ma"
+              >
+                <div class="model-icon">📉</div>
+                <div class="model-name">Moving Average</div>
+                <div class="model-desc">
+                  Temporal smoothing over the best window (4–52 periods).
+                  Simple, robust baseline for time-series sales data.
+                </div>
+                <span class="model-tag tag-fast">📅 Time-Series</span>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 16px;
+                "
+              >
+                <div>
+                  <div class="chart-title">⚙️ Training Configuration</div>
+                  <div class="chart-sub" style="margin-bottom: 0">
+                    Adjust hyperparameters before training
+                  </div>
+                </div>
+                <button
+                  class="btn btn-primary"
+                  id="trainBtn"
+                  onclick="startTraining()"
+                  disabled
+                >
+                  🚀 Train All Models
+                </button>
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 16px;
+                "
+              >
+                <div class="field-group">
+                  <div class="field-label">Test Split %</div>
+                  <select id="testSplit">
+                    <option value="0.1">10% Test</option>
+                    <option value="0.2" selected>20% Test</option>
+                    <option value="0.3">30% Test</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <div class="field-label">Random Seed</div>
+                  <select id="randomSeed">
+                    <option value="42">42 (Classic)</option>
+                    <option value="0">0</option>
+                    <option value="123">123</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <div class="field-label">Tree Max Depth</div>
+                  <select id="treeDepth">
+                    <option value="3">3 (Simple)</option>
+                    <option value="5" selected>5 (Medium)</option>
+                    <option value="10">10 (Complex)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div id="trainingProgress" style="display: none">
+              <div class="chart-card">
+                <div class="chart-title">🔄 Training Progress</div>
+                <div id="progressContent"></div>
+                <div class="train-log" id="trainLog"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RESULTS PAGE -->
+          <div class="page" id="page-results">
+            <div
+              id="noResults"
+              style="
+                text-align: center;
+                padding: 80px 40px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+              "
+            >
+              <div style="font-size: 48px; margin-bottom: 16px">📊</div>
+              <div
+                style="font-size: 18px; font-weight: 600; margin-bottom: 8px"
+              >
+                No results yet
+              </div>
+              <div
+                style="
+                  color: var(--text3);
+                  font-size: 14px;
+                  margin-bottom: 20px;
+                "
+              >
+                Train your models first to see results here
+              </div>
+              <button
+                class="btn btn-primary"
+                onclick="
+                  showPage('train', document.querySelectorAll('.nav-item')[2])
+                "
+              >
+                Go to Training →
+              </button>
+            </div>
+            <div id="resultsContent" style="display: none">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 20px;
+                  flex-wrap: wrap;
+                  gap: 10px;
+                "
+              >
+                <div>
+                  <div style="font-size: 16px; font-weight: 600">
+                    Model Performance Comparison
+                  </div>
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--text3);
+                      margin-top: 2px;
+                    "
+                    id="trainSummary"
+                  ></div>
+                </div>
+                <div style="display: flex; gap: 10px">
+                  <button
+                    class="btn btn-success btn-sm"
+                    onclick="downloadCSV()"
+                  >
+                    ⬇ Download CSV
+                  </button>
+                  <button
+                    class="btn btn-primary btn-sm"
+                    id="predictBtnResults"
+                    onclick="
+                      showPage('predict', document.querySelector('#predictNav'))
+                    "
+                  >
+                    🎯 Make Prediction
+                  </button>
+                </div>
+              </div>
+              <div class="results-grid" id="modelCards"></div>
+              <div class="toggle-group">
+                <button
+                  class="toggle-btn active"
+                  onclick="switchChart('comparison', this)"
+                >
+                  Model Comparison
+                </button>
+                <button
+                  class="toggle-btn"
+                  onclick="switchChart('predictions', this)"
+                >
+                  Predictions vs Actual
+                </button>
+                <button
+                  class="toggle-btn"
+                  onclick="switchChart('metrics', this)"
+                >
+                  Metrics Radar
+                </button>
+              </div>
+              <div id="chart-comparison" class="chart-card">
+                <div class="chart-title">Model Performance Comparison</div>
+                <div class="chart-sub">
+                  R² Score and accuracy across all trained models
+                </div>
+                <div style="position: relative; height: 280px">
+                  <canvas id="comparisonChart"></canvas>
+                </div>
+              </div>
+              <div
+                id="chart-predictions"
+                class="chart-card"
+                style="display: none"
+              >
+                <div class="chart-title">Predictions vs Actual Values</div>
+                <div class="chart-sub">
+                  Sample of 20 test points across models
+                </div>
+                <div style="position: relative; height: 280px">
+                  <canvas id="predictionsChart"></canvas>
+                </div>
+              </div>
+              <div id="chart-metrics" class="chart-card" style="display: none">
+                <div class="chart-title">Error Metrics Breakdown</div>
+                <div class="chart-sub">
+                  MAE and RMSE comparison (lower is better)
+                </div>
+                <div style="position: relative; height: 280px">
+                  <canvas id="metricsChart"></canvas>
+                </div>
+              </div>
+              <div class="charts-2col">
+                <div class="chart-card">
+                  <div class="chart-title">Feature Importance</div>
+                  <div class="chart-sub">
+                    Top features by Decision Tree importance
+                  </div>
+                  <div style="position: relative; height: 220px">
+                    <canvas id="featureChart"></canvas>
+                  </div>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-title">Training vs Test Performance</div>
+                  <div class="chart-sub">R² scores on train vs test split</div>
+                  <div style="position: relative; height: 220px">
+                    <canvas id="splitChart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PREDICTION PAGE -->
+          <div class="page" id="page-predict">
+            <div
+              id="noPredictionReady"
+              style="
+                text-align: center;
+                padding: 80px 40px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+              "
+            >
+              <div style="font-size: 48px; margin-bottom: 16px">🎯</div>
+              <div
+                style="font-size: 18px; font-weight: 600; margin-bottom: 8px"
+              >
+                No models trained yet
+              </div>
+              <div
+                style="
+                  color: var(--text3);
+                  font-size: 14px;
+                  margin-bottom: 20px;
+                "
+              >
+                Train your models first to make predictions
+              </div>
+              <button
+                class="btn btn-primary"
+                onclick="
+                  showPage('train', document.querySelectorAll('.nav-item')[2])
+                "
+              >
+                Go to Training →
+              </button>
+            </div>
+            <div id="predictionContent" style="display: none">
+              <div style="margin-bottom: 24px">
+                <div
+                  style="font-size: 16px; font-weight: 600; margin-bottom: 4px"
+                >
+                  🎯 Make a Real-World Prediction
+                </div>
+                <div style="font-size: 13px; color: var(--text3)">
+                  Enter values for each feature and get predictions from all
+                  trained models
+                </div>
+              </div>
+
+              <div class="chart-card">
+                <div class="chart-title">📝 Feature Input</div>
+                <div class="chart-sub">
+                  Fill in the values for your prediction scenario
+                </div>
+                <div id="predictionForm" class="prediction-form"></div>
+                <div style="display: flex; gap: 10px; margin-top: 20px">
+                  <button
+                    class="btn btn-primary"
+                    id="predictBtn"
+                    onclick="makePrediction()"
+                  >
+                    🔮 Get Predictions
+                  </button>
+                  <button class="btn btn-ghost" onclick="resetPredictionForm()">
+                    ↻ Reset
+                  </button>
+                </div>
+              </div>
+
+              <div id="predictionResults" style="display: none">
+                <div class="chart-card">
+                  <div class="chart-title">📊 Prediction Results</div>
+                  <div class="chart-sub">
+                    Predictions from all trained models for your scenario
+                  </div>
+                  <div id="predictionResultsContent"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- RESULTS PAGE -->
-      <div class="page" id="page-results">
-        <div id="noResults" style="text-align:center;padding:80px 40px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
-          <div style="font-size:48px;margin-bottom:16px">📊</div>
-          <div style="font-size:18px;font-weight:600;margin-bottom:8px">No results yet</div>
-          <div style="color:var(--text3);font-size:14px;margin-bottom:20px">Train your models first to see results here</div>
-          <button class="btn btn-primary" onclick="showPage('train',document.querySelectorAll('.nav-item')[2])">Go to Training →</button>
-        </div>
-        <div id="resultsContent" style="display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-            <div>
-              <div style="font-size:16px;font-weight:600">Model Performance Comparison</div>
-              <div style="font-size:12px;color:var(--text3);margin-top:2px" id="trainSummary"></div>
-            </div>
-            <div style="display:flex;gap:10px">
-              <button class="btn btn-success btn-sm" onclick="downloadCSV()">⬇ Download CSV</button>
-              <button class="btn btn-primary btn-sm" id="predictBtnResults" onclick="showPage('predict',document.querySelector('#predictNav'))">🎯 Make Prediction</button>
-            </div>
-          </div>
-          <div class="results-grid" id="modelCards"></div>
-          <div class="toggle-group">
-            <button class="toggle-btn active" onclick="switchChart('comparison',this)">Model Comparison</button>
-            <button class="toggle-btn" onclick="switchChart('predictions',this)">Predictions vs Actual</button>
-            <button class="toggle-btn" onclick="switchChart('metrics',this)">Metrics Radar</button>
-          </div>
-          <div id="chart-comparison" class="chart-card">
-            <div class="chart-title">Model Performance Comparison</div>
-            <div class="chart-sub">R² Score and accuracy across all trained models</div>
-            <div style="position:relative;height:280px"><canvas id="comparisonChart"></canvas></div>
-          </div>
-          <div id="chart-predictions" class="chart-card" style="display:none">
-            <div class="chart-title">Predictions vs Actual Values</div>
-            <div class="chart-sub">Sample of 20 test points across models</div>
-            <div style="position:relative;height:280px"><canvas id="predictionsChart"></canvas></div>
-          </div>
-          <div id="chart-metrics" class="chart-card" style="display:none">
-            <div class="chart-title">Error Metrics Breakdown</div>
-            <div class="chart-sub">MAE and RMSE comparison (lower is better)</div>
-            <div style="position:relative;height:280px"><canvas id="metricsChart"></canvas></div>
-          </div>
-          <div class="charts-2col">
-            <div class="chart-card">
-              <div class="chart-title">Feature Importance</div>
-              <div class="chart-sub">Top features by Decision Tree importance</div>
-              <div style="position:relative;height:220px"><canvas id="featureChart"></canvas></div>
-            </div>
-            <div class="chart-card">
-              <div class="chart-title">Training vs Test Performance</div>
-              <div class="chart-sub">R² scores on train vs test split</div>
-              <div style="position:relative;height:220px"><canvas id="splitChart"></canvas></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PREDICTION PAGE -->
-      <div class="page" id="page-predict">
-        <div id="noPredictionReady" style="text-align:center;padding:80px 40px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
-          <div style="font-size:48px;margin-bottom:16px">🎯</div>
-          <div style="font-size:18px;font-weight:600;margin-bottom:8px">No models trained yet</div>
-          <div style="color:var(--text3);font-size:14px;margin-bottom:20px">Train your models first to make predictions</div>
-          <button class="btn btn-primary" onclick="showPage('train',document.querySelectorAll('.nav-item')[2])">Go to Training →</button>
-        </div>
-        <div id="predictionContent" style="display:none">
-          <div style="margin-bottom:24px">
-            <div style="font-size:16px;font-weight:600;margin-bottom:4px">🎯 Make a Real-World Prediction</div>
-            <div style="font-size:13px;color:var(--text3)">Enter values for each feature and get predictions from all trained models</div>
-          </div>
-
-          <div class="chart-card">
-            <div class="chart-title">📝 Feature Input</div>
-            <div class="chart-sub">Fill in the values for your prediction scenario</div>
-            <div id="predictionForm" class="prediction-form"></div>
-            <div style="display:flex;gap:10px;margin-top:20px">
-              <button class="btn btn-primary" id="predictBtn" onclick="makePrediction()">🔮 Get Predictions</button>
-              <button class="btn btn-ghost" onclick="resetPredictionForm()">↻ Reset</button>
-            </div>
-          </div>
-
-          <div id="predictionResults" style="display:none">
-            <div class="chart-card">
-              <div class="chart-title">📊 Prediction Results</div>
-              <div class="chart-sub">Predictions from all trained models for your scenario</div>
-              <div id="predictionResultsContent"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
-  </div>
-</div>
-<script src="./static/main.js"></script>
-</body>
+    <script src="./static/main.js"></script>
+  </body>
 </html>
